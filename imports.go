@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-// checkReservedImports reports imports that use Go reserved keywords as
+// checkImports reports imports that use Go reserved keywords as
 // package names when fluent provides an alternative. For example,
 // html5/select should be html5/dropdown, html5/main should be
 // html5/primary, and html5/var should be html5/variable.
-func checkReservedImports(fset *token.FileSet, file *ast.File) []Diagnostic {
+func checkImports(fset *token.FileSet, file *ast.File) []Diagnostic {
 	var diags []Diagnostic
 
 	for _, imp := range file.Imports {

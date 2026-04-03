@@ -31,7 +31,7 @@ func checkTypedParams(fset *token.FileSet, file *ast.File) []Diagnostic {
 		methodName := sel.Sel.Name
 
 		// Find the originating package for this method chain.
-		pkg, found := resolveChainPackage(sel.X, imports, activeRegistry)
+		pkg, found := chainPackage(sel.X, imports, activeRegistry)
 		if !found {
 			return true
 		}

@@ -6,10 +6,10 @@ import (
 	"go/token"
 )
 
-// checkConstructorUsage reports calls to pkg.New() immediately followed
+// checkConstructors reports calls to pkg.New() immediately followed
 // by a single method call that exists as a package-level constructor.
 // For example, div.New().Text("hello") should be div.Text("hello").
-func checkConstructorUsage(fset *token.FileSet, file *ast.File) []Diagnostic {
+func checkConstructors(fset *token.FileSet, file *ast.File) []Diagnostic {
 	if activeRegistry == nil {
 		return nil
 	}
