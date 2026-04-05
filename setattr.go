@@ -11,7 +11,7 @@ import (
 // checkSetAttrChain reports attempts to chain method calls after
 // SetAttribute. SetAttribute does not return the element, so any
 // subsequent method call on the result will fail to compile.
-func checkSetAttrChain(fset *token.FileSet, file *ast.File) []Diagnostic {
+func (l *Linter) checkSetAttrChain(fset *token.FileSet, file *ast.File) []Diagnostic {
 	var diags []Diagnostic
 
 	ast.Inspect(file, func(n ast.Node) bool {
@@ -66,12 +66,11 @@ var prefixHelpers = []prefixHelper{
 
 // checkSetAttrKey reports calls to SetAttribute where the key is a
 // known HTML attribute that has a dedicated typed method.
-func checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnostic {
-	if activeRegistry == nil {
+func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnostic {
+	if l.registry == nil {
 		return nil
 	}
 
-	all := attrMethods(activeRegistry)
 	var diags []Diagnostic
 
 	ast.Inspect(file, func(n ast.Node) bool {
@@ -112,7 +111,7 @@ func checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnostic {
 			}
 		}
 
-		method, known := all[key]
+		method, known := l.attrMethods[key]
 		if !known {
 			return true
 		}
@@ -130,9 +129,9 @@ func checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnostic {
 	return diags
 }
 
-// attrMethods builds a combined map of all known HTML attribute keys
-// to their typed method names across all packages.
-func attrMethods(reg *Registry) map[string]string {
+// mergeAttrMethods builds a combined map of all known HTML attribute
+// keys to their typed method names across all packages.
+func mergeAttrMethods(reg *Registry) map[string]string {
 	combined := make(map[string]string)
 	for _, pkg := range reg.Packages {
 		maps.Copy(combined, pkg.AttrMethods)

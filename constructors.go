@@ -9,8 +9,8 @@ import (
 // checkConstructors reports calls to pkg.New() immediately followed
 // by a single method call that exists as a package-level constructor.
 // For example, div.New().Text("hello") should be div.Text("hello").
-func checkConstructors(fset *token.FileSet, file *ast.File) []Diagnostic {
-	if activeRegistry == nil {
+func (l *Linter) checkConstructors(fset *token.FileSet, file *ast.File) []Diagnostic {
+	if l.registry == nil {
 		return nil
 	}
 
@@ -58,7 +58,7 @@ func checkConstructors(fset *token.FileSet, file *ast.File) []Diagnostic {
 			return true
 		}
 
-		pkg, registered := activeRegistry.Packages[importPath]
+		pkg, registered := l.registry.Packages[importPath]
 		if !registered {
 			return true
 		}

@@ -11,7 +11,7 @@ import (
 // package names when fluent provides an alternative. For example,
 // html5/select should be html5/dropdown, html5/main should be
 // html5/primary, and html5/var should be html5/variable.
-func checkImports(fset *token.FileSet, file *ast.File) []Diagnostic {
+func (l *Linter) checkImports(fset *token.FileSet, file *ast.File) []Diagnostic {
 	var diags []Diagnostic
 
 	for _, imp := range file.Imports {

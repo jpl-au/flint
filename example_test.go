@@ -7,8 +7,8 @@ import (
 )
 
 func Example() {
-	// Enable symbol validation with the generated registry.
-	flint.WithRegistry(flint.FluentRegistry())
+	// Create a linter with the generated registry.
+	l := flint.New(flint.FluentRegistry())
 
 	// Source code that an LLM might generate.
 	src := []byte(`package ui
@@ -41,7 +41,7 @@ func render(name string) {
 }
 `)
 
-	diags, err := flint.Source("example.go", src)
+	diags, err := l.Source("example.go", src)
 	if err != nil {
 		fmt.Printf("parse error: %v\n", err)
 		return

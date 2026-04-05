@@ -9,8 +9,8 @@ import (
 // checkArity reports calls to registered functions where the number of
 // arguments does not match the expected count. Variadic functions
 // (arity -1) accept any number of arguments and are not checked.
-func checkArity(fset *token.FileSet, file *ast.File) []Diagnostic {
-	if activeRegistry == nil {
+func (l *Linter) checkArity(fset *token.FileSet, file *ast.File) []Diagnostic {
+	if l.registry == nil {
 		return nil
 	}
 
@@ -39,7 +39,7 @@ func checkArity(fset *token.FileSet, file *ast.File) []Diagnostic {
 			return true
 		}
 
-		pkg, registered := activeRegistry.Packages[importPath]
+		pkg, registered := l.registry.Packages[importPath]
 		if !registered {
 			return true
 		}

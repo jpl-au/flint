@@ -27,6 +27,8 @@ func build() {
 }
 
 func TestCheckStaticLiteral(t *testing.T) {
+	l := New(nil)
+
 	tests := []struct {
 		name  string
 		src   []byte
@@ -86,7 +88,7 @@ func TestCheckStaticLiteral(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			diags, err := Source("test.go", tt.src)
+			diags, err := l.Source("test.go", tt.src)
 			if err != nil {
 				t.Fatalf("unexpected parse error: %v", err)
 			}
@@ -101,6 +103,8 @@ func TestCheckStaticLiteral(t *testing.T) {
 }
 
 func TestCheckRawTextLiteral(t *testing.T) {
+	l := New(nil)
+
 	tests := []struct {
 		name  string
 		src   []byte
@@ -155,7 +159,7 @@ func TestCheckRawTextLiteral(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			diags, err := Source("test.go", tt.src)
+			diags, err := l.Source("test.go", tt.src)
 			if err != nil {
 				t.Fatalf("unexpected parse error: %v", err)
 			}
@@ -170,8 +174,9 @@ func TestCheckRawTextLiteral(t *testing.T) {
 }
 
 func TestRawTextDiagnosticMessage(t *testing.T) {
+	l := New(nil)
 	src := wrap(`html := "<b>x</b>"; _ = div.New().RawText(html)`)
-	diags, err := Source("test.go", src)
+	diags, err := l.Source("test.go", src)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
@@ -186,8 +191,9 @@ func TestRawTextDiagnosticMessage(t *testing.T) {
 }
 
 func TestRawTextfDiagnosticMessage(t *testing.T) {
+	l := New(nil)
 	src := wrap(`tpl := "<b>%s</b>"; _ = div.New().RawTextf(tpl, "x")`)
-	diags, err := Source("test.go", src)
+	diags, err := l.Source("test.go", src)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
@@ -202,15 +208,17 @@ func TestRawTextfDiagnosticMessage(t *testing.T) {
 }
 
 func TestSourceReturnsParseError(t *testing.T) {
-	_, err := Source("bad.go", []byte("not valid go"))
+	l := New(nil)
+	_, err := l.Source("bad.go", []byte("not valid go"))
 	if err == nil {
 		t.Fatal("expected parse error, got nil")
 	}
 }
 
 func TestDiagnosticPositions(t *testing.T) {
+	l := New(nil)
 	src := wrap(`name := "world"; _ = div.New().Static(name)`)
-	diags, err := Source("test.go", src)
+	diags, err := l.Source("test.go", src)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
@@ -237,9 +245,9 @@ func TestDiagnosticPositions(t *testing.T) {
 }
 
 func TestDescribeExpr(t *testing.T) {
-	// Verify that diagnostic messages describe the problematic expression.
+	l := New(nil)
 	src := wrap(`name := "world"; _ = div.New().Static(name)`)
-	diags, err := Source("test.go", src)
+	diags, err := l.Source("test.go", src)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}

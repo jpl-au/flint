@@ -5,6 +5,8 @@ import (
 )
 
 func TestCheckReservedImports(t *testing.T) {
+	l := New(nil)
+
 	tests := []struct {
 		name string
 		src  []byte
@@ -75,7 +77,7 @@ func build() {}
 			// reserved keywords. The import check runs before parse for
 			// these cases, so we test via the check function directly
 			// for the ones that won't parse. For valid Go, use Source.
-			diags, err := Source("test.go", tt.src)
+			diags, err := l.Source("test.go", tt.src)
 
 			if tt.want == "" {
 				if err != nil {

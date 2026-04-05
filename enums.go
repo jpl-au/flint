@@ -9,8 +9,8 @@ import (
 // checkTypedParams reports method calls where a string literal is passed
 // to a method that expects a typed enum constant. For example,
 // input.New().Type("email") should be input.New().Type(inputtype.Email).
-func checkTypedParams(fset *token.FileSet, file *ast.File) []Diagnostic {
-	if activeRegistry == nil {
+func (l *Linter) checkTypedParams(fset *token.FileSet, file *ast.File) []Diagnostic {
+	if l.registry == nil {
 		return nil
 	}
 
@@ -31,7 +31,7 @@ func checkTypedParams(fset *token.FileSet, file *ast.File) []Diagnostic {
 		methodName := sel.Sel.Name
 
 		// Find the originating package for this method chain.
-		pkg, found := chainPackage(sel.X, imports, activeRegistry)
+		pkg, found := chainPackage(sel.X, imports, l.registry)
 		if !found {
 			return true
 		}

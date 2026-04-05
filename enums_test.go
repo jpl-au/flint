@@ -6,9 +6,7 @@ import (
 )
 
 func TestCheckTypedParams(t *testing.T) {
-	old := activeRegistry
-	activeRegistry = FluentRegistry()
-	defer func() { activeRegistry = old }()
+	l := New(FluentRegistry())
 
 	tests := []struct {
 		name    string
@@ -65,7 +63,7 @@ func TestCheckTypedParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			src := wrapWithImports(tt.imports, tt.body)
-			diags, err := Source("test.go", src)
+			diags, err := l.Source("test.go", src)
 			if err != nil {
 				t.Fatalf("unexpected parse error: %v", err)
 			}

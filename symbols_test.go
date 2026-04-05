@@ -75,16 +75,13 @@ func build() {
 }
 
 func TestCheckSymbolsNoRegistry(t *testing.T) {
-	// With no registry set, symbol checks should be skipped.
-	old := activeRegistry
-	activeRegistry = nil
-	defer func() { activeRegistry = old }()
+	l := New(nil)
 
 	src := wrapWithImports(
 		[]string{"github.com/jpl-au/fluent/node"},
 		`_ = node.Fragment()`,
 	)
-	diags, err := Source("test.go", src)
+	diags, err := l.Source("test.go", src)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
@@ -97,9 +94,7 @@ func TestCheckSymbolsNoRegistry(t *testing.T) {
 }
 
 func TestCheckSymbolsValidCalls(t *testing.T) {
-	old := activeRegistry
-	activeRegistry = testRegistry()
-	defer func() { activeRegistry = old }()
+	l := New(testRegistry())
 
 	tests := []struct {
 		name    string
@@ -161,7 +156,7 @@ func TestCheckSymbolsValidCalls(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			src := wrapWithImports(tt.imports, tt.body)
-			diags, err := Source("test.go", src)
+			diags, err := l.Source("test.go", src)
 			if err != nil {
 				t.Fatalf("unexpected parse error: %v", err)
 			}
@@ -187,9 +182,7 @@ func TestCheckSymbolsValidCalls(t *testing.T) {
 }
 
 func TestCheckSymbolsInvalidPackageFunction(t *testing.T) {
-	old := activeRegistry
-	activeRegistry = testRegistry()
-	defer func() { activeRegistry = old }()
+	l := New(testRegistry())
 
 	tests := []struct {
 		name    string
@@ -232,7 +225,7 @@ func TestCheckSymbolsInvalidPackageFunction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			src := wrapWithImports(tt.imports, tt.body)
-			diags, err := Source("test.go", src)
+			diags, err := l.Source("test.go", src)
 			if err != nil {
 				t.Fatalf("unexpected parse error: %v", err)
 			}
@@ -254,9 +247,7 @@ func TestCheckSymbolsInvalidPackageFunction(t *testing.T) {
 }
 
 func TestCheckSymbolsInvalidMethod(t *testing.T) {
-	old := activeRegistry
-	activeRegistry = testRegistry()
-	defer func() { activeRegistry = old }()
+	l := New(testRegistry())
 
 	tests := []struct {
 		name    string
@@ -281,7 +272,7 @@ func TestCheckSymbolsInvalidMethod(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			src := wrapWithImports(tt.imports, tt.body)
-			diags, err := Source("test.go", src)
+			diags, err := l.Source("test.go", src)
 			if err != nil {
 				t.Fatalf("unexpected parse error: %v", err)
 			}
@@ -303,9 +294,7 @@ func TestCheckSymbolsInvalidMethod(t *testing.T) {
 }
 
 func TestCheckSymbolsAliasedImport(t *testing.T) {
-	old := activeRegistry
-	activeRegistry = testRegistry()
-	defer func() { activeRegistry = old }()
+	l := New(testRegistry())
 
 	src := []byte(`package example
 
@@ -316,7 +305,7 @@ func build() {
 	_ = d.Fragment()
 }
 `)
-	diags, err := Source("test.go", src)
+	diags, err := l.Source("test.go", src)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
@@ -337,16 +326,14 @@ func build() {
 }
 
 func TestCheckSymbolsUnknownImportIgnored(t *testing.T) {
-	old := activeRegistry
-	activeRegistry = testRegistry()
-	defer func() { activeRegistry = old }()
+	l := New(testRegistry())
 
 	// Imports not in the registry should be silently ignored.
 	src := wrapWithImports(
 		[]string{"fmt"},
 		`_ = fmt.Sprintf("hello")`,
 	)
-	diags, err := Source("test.go", src)
+	diags, err := l.Source("test.go", src)
 	if err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}

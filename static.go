@@ -18,7 +18,7 @@ type literalArgCheck struct {
 // checkStatic reports calls to Static() where the argument is not a
 // string literal. Static content is marked for JIT pre-rendering and
 // must not contain dynamic values.
-func checkStatic(fset *token.FileSet, file *ast.File) []Diagnostic {
+func (l *Linter) checkStatic(fset *token.FileSet, file *ast.File) []Diagnostic {
 	return checkLiteralArgs(fset, file, literalArgCheck{
 		names:   []string{"Static"},
 		nargs:   1,
@@ -30,7 +30,7 @@ func checkStatic(fset *token.FileSet, file *ast.File) []Diagnostic {
 // checkRawText reports calls to RawText() and RawTextf() where the
 // first argument is not a string literal. Raw text is not HTML-escaped,
 // so passing dynamic content risks XSS vulnerabilities.
-func checkRawText(fset *token.FileSet, file *ast.File) []Diagnostic {
+func (l *Linter) checkRawText(fset *token.FileSet, file *ast.File) []Diagnostic {
 	return checkLiteralArgs(fset, file, literalArgCheck{
 		names:   []string{"RawText", "RawTextf"},
 		nargs:   -1,
