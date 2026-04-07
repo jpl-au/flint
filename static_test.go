@@ -2,6 +2,7 @@ package flint
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -258,5 +259,97 @@ func TestDescribeExpr(t *testing.T) {
 	want := `Static() argument must be a string literal; got variable "name"`
 	if diags[0].Message != want {
 		t.Errorf("Message = %q, want %q", diags[0].Message, want)
+	}
+}
+
+func TestCheckStaticScopedToFluent(t *testing.T) {
+	l := New(FluentRegistry())
+
+	tests := []struct {
+		name    string
+		imports []string
+		body    string
+		count   int
+	}{
+		{
+			name:    "fluent Static with variable is flagged",
+			imports: []string{"github.com/jpl-au/fluent/html5/div"},
+			body:    `name := "world"; _ = div.New().Static(name)`,
+			count:   1,
+		},
+		{
+			name:    "non-fluent Static with variable is not flagged",
+			imports: []string{"example.com/mylib"},
+			body:    `name := "world"; _ = mylib.New().Static(name)`,
+			count:   0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			src := wrapWithImports(tt.imports, tt.body)
+			diags, err := l.Source("test.go", src)
+			if err != nil {
+				t.Fatalf("unexpected parse error: %v", err)
+			}
+			staticDiags := 0
+			for _, d := range diags {
+				if strings.Contains(d.Message, "Static() argument must be a string literal") {
+					staticDiags++
+				}
+			}
+			if staticDiags != tt.count {
+				t.Errorf("got %d static diagnostics, want %d", staticDiags, tt.count)
+				for _, d := range diags {
+					t.Logf("  %s: %s", d.Pos, d.Message)
+				}
+			}
+		})
+	}
+}
+
+func TestCheckRawTextScopedToFluent(t *testing.T) {
+	l := New(FluentRegistry())
+
+	tests := []struct {
+		name    string
+		imports []string
+		body    string
+		count   int
+	}{
+		{
+			name:    "fluent RawText with variable is flagged",
+			imports: []string{"github.com/jpl-au/fluent/html5/div"},
+			body:    `html := "<b>x</b>"; _ = div.New().RawText(html)`,
+			count:   1,
+		},
+		{
+			name:    "non-fluent RawText with variable is not flagged",
+			imports: []string{"example.com/mylib"},
+			body:    `html := "<b>x</b>"; _ = mylib.New().RawText(html)`,
+			count:   0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			src := wrapWithImports(tt.imports, tt.body)
+			diags, err := l.Source("test.go", src)
+			if err != nil {
+				t.Fatalf("unexpected parse error: %v", err)
+			}
+			rawDiags := 0
+			for _, d := range diags {
+				if strings.Contains(d.Message, "first argument must be a string literal") {
+					rawDiags++
+				}
+			}
+			if rawDiags != tt.count {
+				t.Errorf("got %d raw text diagnostics, want %d", rawDiags, tt.count)
+				for _, d := range diags {
+					t.Logf("  %s: %s", d.Pos, d.Message)
+				}
+			}
+		})
 	}
 }

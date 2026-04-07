@@ -10,9 +10,16 @@ import (
 
 // checkSetAttrChain reports attempts to chain method calls after
 // SetAttribute. SetAttribute does not return the element, so any
-// subsequent method call on the result will fail to compile.
+// subsequent method call on the result will fail to compile. Only
+// flags calls on fluent elements (scoped via the registry).
 func (l *Linter) checkSetAttrChain(fset *token.FileSet, file *ast.File) []Diagnostic {
 	var diags []Diagnostic
+
+	// Scope to fluent packages when a registry is available.
+	var imports map[string]string
+	if l.registry != nil {
+		imports = resolveImports(file)
+	}
 
 	ast.Inspect(file, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
@@ -37,6 +44,13 @@ func (l *Linter) checkSetAttrChain(fset *token.FileSet, file *ast.File) []Diagno
 
 		if innerSel.Sel.Name != "SetAttribute" {
 			return true
+		}
+
+		// Scope check: verify the receiver traces back to a fluent package.
+		if imports != nil && l.registry != nil {
+			if _, found := chainPackage(innerSel.X, imports, l.registry); !found {
+				return true
+			}
 		}
 
 		diags = append(diags, Diagnostic{

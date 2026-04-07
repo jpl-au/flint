@@ -45,6 +45,12 @@ type Package struct {
 	// "href" -> "Href". Used to detect SetAttribute calls that should
 	// use the dedicated typed method instead.
 	AttrMethods map[string]string
+
+	// TypedConstructors maps constructor names to the child package
+	// they accept. For example: "Items" -> "li" means Items() accepts
+	// ...*li.Element. Used to suggest typed constructors when New() is
+	// called with children that all come from a single child package.
+	TypedConstructors map[string]string
 }
 
 // ReservedAliases maps Go reserved keyword package names to their

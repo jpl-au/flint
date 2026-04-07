@@ -19,7 +19,7 @@ type literalArgCheck struct {
 // string literal. Static content is marked for JIT pre-rendering and
 // must not contain dynamic values.
 func (l *Linter) checkStatic(fset *token.FileSet, file *ast.File) []Diagnostic {
-	return checkLiteralArgs(fset, file, literalArgCheck{
+	return l.checkLiteralArgs(fset, file, literalArgCheck{
 		names:   []string{"Static"},
 		nargs:   1,
 		message: "Static() argument must be a string literal; got %s",
@@ -31,7 +31,7 @@ func (l *Linter) checkStatic(fset *token.FileSet, file *ast.File) []Diagnostic {
 // first argument is not a string literal. Raw text is not HTML-escaped,
 // so passing dynamic content risks XSS vulnerabilities.
 func (l *Linter) checkRawText(fset *token.FileSet, file *ast.File) []Diagnostic {
-	return checkLiteralArgs(fset, file, literalArgCheck{
+	return l.checkLiteralArgs(fset, file, literalArgCheck{
 		names:   []string{"RawText", "RawTextf"},
 		nargs:   -1,
 		message: "%s() first argument must be a string literal; got %s",
@@ -40,13 +40,20 @@ func (l *Linter) checkRawText(fset *token.FileSet, file *ast.File) []Diagnostic 
 }
 
 // checkLiteralArgs walks the AST and reports calls matching check where
-// the first argument is not a string literal.
-func checkLiteralArgs(fset *token.FileSet, file *ast.File, check literalArgCheck) []Diagnostic {
+// the first argument is not a string literal. Only flags calls on
+// fluent elements (scoped via the registry).
+func (l *Linter) checkLiteralArgs(fset *token.FileSet, file *ast.File, check literalArgCheck) []Diagnostic {
 	var diags []Diagnostic
 
 	names := make(map[string]bool, len(check.names))
 	for _, n := range check.names {
 		names[n] = true
+	}
+
+	// Scope to fluent packages when a registry is available.
+	var imports map[string]string
+	if l.registry != nil {
+		imports = resolveImports(file)
 	}
 
 	ast.Inspect(file, func(n ast.Node) bool {
@@ -58,6 +65,17 @@ func checkLiteralArgs(fset *token.FileSet, file *ast.File, check literalArgCheck
 		name := calleeName(call)
 		if !names[name] {
 			return true
+		}
+
+		// Scope check: verify the receiver traces back to a fluent package.
+		if imports != nil && l.registry != nil {
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			if _, found := chainPackage(sel.X, imports, l.registry); !found {
+				return true
+			}
 		}
 
 		if len(call.Args) == 0 {

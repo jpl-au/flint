@@ -1,6 +1,7 @@
 package flint
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -85,7 +86,7 @@ func build() {}
 					t.Fatalf("unexpected parse error: %v", err)
 				}
 				for _, d := range diags {
-					if d.Fix != "" && contains(d.Message, "reserved keyword") {
+					if d.Fix != "" && strings.Contains(d.Message, "reserved keyword") {
 						t.Errorf("unexpected reserved import diagnostic: %s", d.Message)
 					}
 				}
@@ -120,17 +121,4 @@ func build() {}
 			}
 		})
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && searchString(s, substr)
-}
-
-func searchString(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
