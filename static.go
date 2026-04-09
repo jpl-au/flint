@@ -23,7 +23,7 @@ func (l *Linter) checkStatic(fset *token.FileSet, file *ast.File) []Diagnostic {
 		names:   []string{"Static"},
 		nargs:   1,
 		message: "Static() argument must be a string literal; got %s",
-		fix:     "Use .Text() or .Textf() for dynamic content, or pass a string literal to .Static()",
+		fix:     "Static() is for string literals only (JIT pre-rendering); replace Static with Text or Textf for dynamic content",
 	})
 }
 
@@ -35,7 +35,7 @@ func (l *Linter) checkRawText(fset *token.FileSet, file *ast.File) []Diagnostic 
 		names:   []string{"RawText", "RawTextf"},
 		nargs:   -1,
 		message: "%s() first argument must be a string literal; got %s",
-		fix:     "Use .Text() or .Textf() for dynamic content, or pass a string literal to .RawText()",
+		fix:     "RawText() bypasses HTML escaping and must use a string literal; replace RawText with Text or Textf for dynamic content",
 	})
 }
 
