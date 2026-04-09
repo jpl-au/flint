@@ -62,61 +62,60 @@ func main() {
 
 	args := flag.Args()
 
-	if len(args) == 1 && args[0] == "-" {
-		n, err := checkStdin(l)
+	var found int
+	var hadErrors bool
+	var stdinUsed bool
+
+	for _, arg := range args {
+		if arg == "-" {
+			if stdinUsed {
+				fmt.Fprintf(os.Stderr, "flint: stdin already read\n")
+				hadErrors = true
+				continue
+			}
+			stdinUsed = true
+			n, err := checkStdin(l)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "flint: %v\n", err)
+				hadErrors = true
+				continue
+			}
+			found += n
+			continue
+		}
+
+		files, err := resolvePattern(arg, *includeTests)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "flint: %v\n", err)
-			os.Exit(2)
+			hadErrors = true
+			continue
 		}
-		if n > 0 {
-			fmt.Fprintf(os.Stderr, "\n%d diagnostic(s) found\n", n)
-			os.Exit(1)
+		for _, path := range files {
+			n, err := checkFile(l, path)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "flint: %v\n", err)
+				hadErrors = true
+				continue
+			}
+			found += n
 		}
-		return
 	}
 
-	files, err := resolvePatterns(args, *includeTests)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "flint: %v\n", err)
+	if hadErrors {
 		os.Exit(2)
 	}
-
-	var found int
-	for _, path := range files {
-		n, err := checkFile(l, path)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "flint: %v\n", err)
-			os.Exit(2)
-		}
-		found += n
-	}
-
 	if found > 0 {
 		fmt.Fprintf(os.Stderr, "\n%d diagnostic(s) found\n", found)
 		os.Exit(1)
 	}
 }
 
-// resolvePatterns expands Go-style patterns into concrete file paths.
-// It handles ./... (recursive), directory paths, and individual files.
-func resolvePatterns(patterns []string, includeTests bool) ([]string, error) {
-	var files []string
-	for _, pattern := range patterns {
-		resolved, err := resolvePattern(pattern, includeTests)
-		if err != nil {
-			return nil, err
-		}
-		files = append(files, resolved...)
-	}
-	return files, nil
-}
-
 // resolvePattern expands a single pattern into file paths.
 func resolvePattern(pattern string, includeTests bool) ([]string, error) {
-	// Recursive pattern: ./... or path/...
-	if before, ok := strings.CutSuffix(pattern, "/..."); ok {
+	// Recursive pattern: ./... or path/... or bare ...
+	if before, ok := strings.CutSuffix(pattern, "/..."); ok || pattern == "..." {
 		root := before
-		if root == "." || root == "" {
+		if root == "" || pattern == "..." {
 			root = "."
 		}
 		return findGoFiles(root, true, includeTests)
@@ -150,7 +149,7 @@ func findGoFiles(root string, recursive, includeTests bool) ([]string, error) {
 		// Skip hidden directories and testdata.
 		if d.IsDir() {
 			name := d.Name()
-			if strings.HasPrefix(name, ".") || name == "testdata" || name == "vendor" {
+			if (name != "." && strings.HasPrefix(name, ".")) || name == "testdata" || name == "vendor" {
 				return filepath.SkipDir
 			}
 			// If not recursive, skip subdirectories.
