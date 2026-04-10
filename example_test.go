@@ -22,15 +22,15 @@ import (
 )
 
 func render(name string) {
-	// Correct usage
-	_ = div.New().Class("container").Text("Hello")
+	// Correct usage - direct constructors, no New() wrapper needed.
+	_ = div.Text("Hello").Class("container")
 	_ = input.Email("email").Required()
 	_ = text.Static("Copyright 2024")
 	_ = node.Condition(true)
 	_ = inputtype.Email
 
 	// Mistakes an LLM might make
-	_ = div.New().Class("x").Static(name)                // Static with variable
+	_ = div.Static(name)                                 // Static with variable
 	_ = node.Fragment()                                  // Fragment does not exist
 	_ = div.New().Href("/")                              // div has no Href method
 	_ = inputtype.Telephone                              // not a valid inputtype

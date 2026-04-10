@@ -59,9 +59,16 @@ func TestCheckConstructorUsage(t *testing.T) {
 			body:    `_ = div.New().Class("container")`,
 		},
 		{
-			name:    "New().Class().Text is not flagged (intermediate chain)",
+			name:    "New().Class().Text is flagged (Text constructor can replace New)",
 			imports: []string{"github.com/jpl-au/fluent/html5/div"},
 			body:    `_ = div.New().Class("x").Text("hello")`,
+			want:    "use div.Text(...) directly instead of div.New()...Text(...)",
+		},
+		{
+			name:    "h3.New().Class().Text is flagged through a longer chain",
+			imports: []string{"github.com/jpl-au/fluent/html5/h3"},
+			body:    `_ = h3.New().Class("demo-title").Text("Error Boundary")`,
+			want:    "use h3.Text(...) directly instead of h3.New()...Text(...)",
 		},
 		{
 			name:    "input.New().Email not flagged (Email takes different args)",
