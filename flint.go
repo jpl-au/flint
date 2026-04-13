@@ -4,6 +4,11 @@
 //
 // The linter operates on source code strings using go/parser and
 // go/ast. It has no dependency on fluent itself.
+//
+// The generated registry (see FluentRegistry) also serves as a
+// queryable catalogue of every element's constructors, methods, typed
+// parameters, attribute mappings, and typed constructors. The CLI
+// exposes this via the -info flag.
 package flint
 
 import (

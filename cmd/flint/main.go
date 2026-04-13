@@ -4,21 +4,31 @@
 //
 //	flint [flags] <pattern>...
 //	flint [flags] -
+//	flint -info <element>
 //
 // Patterns follow Go conventions: ./... checks all Go files recursively,
 // ./pkg checks a specific directory, or individual .go files can be named
 // directly. When given "-" as the sole argument, it reads from stdin.
 //
+// The -info flag displays the full registry entry for a named element,
+// including its constructors, methods, typed parameters, attribute
+// mappings, and typed constructors. No linting is performed.
+//
+//	flint -info div
+//	flint -info input
+//	flint -info ol
+//
 // Flags:
 //
 //	-no-registry     Disable symbol validation (only run Static/RawText checks)
 //	-include-tests   Include _test.go files in the analysis
+//	-info <element>  Show registry info for an element and exit
 //
 // Exit codes:
 //
-//	0  No diagnostics found
+//	0  No diagnostics found (or -info completed successfully)
 //	1  One or more diagnostics found
-//	2  Usage or I/O error
+//	2  Usage or I/O error (including unknown element for -info)
 package main
 
 import (
@@ -36,9 +46,11 @@ import (
 func main() {
 	noRegistry := flag.Bool("no-registry", false, "Disable symbol validation")
 	includeTests := flag.Bool("include-tests", false, "Include _test.go files")
+	infoElement := flag.String("info", "", "Show registry info for an element (e.g. -info div)")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: flint [flags] <pattern>...\n")
-		fmt.Fprintf(os.Stderr, "       flint [flags] -            (read from stdin)\n\n")
+		fmt.Fprintf(os.Stderr, "       flint [flags] -            (read from stdin)\n")
+		fmt.Fprintf(os.Stderr, "       flint -info <element>      (show element info)\n\n")
 		fmt.Fprintf(os.Stderr, "Patterns:\n")
 		fmt.Fprintf(os.Stderr, "  ./...      Check all .go files recursively\n")
 		fmt.Fprintf(os.Stderr, "  ./pkg      Check all .go files in a directory\n")
@@ -47,6 +59,15 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+
+	if *infoElement != "" {
+		reg := flint.FluentRegistry()
+		if err := reg.Info(os.Stdout, *infoElement); err != nil {
+			fmt.Fprintf(os.Stderr, "flint: %v\n", err)
+			os.Exit(2)
+		}
+		return
+	}
 
 	if flag.NArg() == 0 {
 		flag.Usage()

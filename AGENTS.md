@@ -13,6 +13,15 @@ diagnostic message and its `fix:` field, then apply the correction.
 flint ./...
 ```
 
+Use `-info` to look up the API surface of any element before writing
+code. This shows constructors, methods, typed parameters, attribute
+mappings, and typed constructors.
+
+```bash
+flint -info div
+flint -info input
+```
+
 Or use the library API to lint source code programmatically:
 
 ```go

@@ -19,12 +19,23 @@ flint views/home.go      # Check a single file
 cat file.go | flint -    # Read from stdin
 ```
 
-Flags:
+### Element info
+
+Use `-info` to inspect the registry entry for any fluent element. This displays its constructors, methods, typed parameters, attribute mappings, and typed constructors.
+
+```bash
+flint -info div          # Show everything about <div>
+flint -info input        # Show everything about <input>
+flint -info ol           # Show everything about <ol>
+```
+
+### Flags
 
 | Flag | Description |
 |------|-------------|
 | `-include-tests` | Include `_test.go` files (excluded by default) |
 | `-no-registry` | Disable symbol validation (only run Static/RawText checks) |
+| `-info <element>` | Show registry info for an element and exit |
 
 Exit codes: `0` clean, `1` diagnostics found, `2` usage or I/O error.
 
