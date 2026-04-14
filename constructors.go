@@ -96,10 +96,11 @@ func (l *Linter) checkConstructors(fset *token.FileSet, file *ast.File) []Diagno
 				}
 
 				diags = append(diags, Diagnostic{
-					Pos:     fset.Position(innerSel.Sel.Pos()),
-					End:     fset.Position(call.End()),
-					Message: message,
-					Fix:     fix,
+					Pos:      fset.Position(innerSel.Sel.Pos()),
+					End:      fset.Position(call.End()),
+					Severity: Warning,
+					Message:  message,
+					Fix:      fix,
 				})
 				return true
 			}

@@ -73,6 +73,9 @@ type prefixHelper struct {
 	helper string
 }
 
+// prefixHelpers lists the attribute key prefixes that map to a dedicated
+// fluent helper method. The loop checks each prefix in order and returns
+// on the first match, so more specific prefixes should appear first.
 var prefixHelpers = []prefixHelper{
 	{"data-", "SetData"},
 	{"aria-", "SetAria"},
@@ -116,10 +119,11 @@ func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnost
 		for _, p := range prefixHelpers {
 			if suffix, ok := strings.CutPrefix(key, p.prefix); ok {
 				diags = append(diags, Diagnostic{
-					Pos:     fset.Position(keyLit.Pos()),
-					End:     fset.Position(call.End()),
-					Message: fmt.Sprintf("SetAttribute(%q, ...) should use %s(%q, ...) instead", key, p.helper, suffix),
-					Fix:     fmt.Sprintf("%s supports chaining and groups %s attributes; SetAttribute does not return the element", p.helper, strings.TrimSuffix(p.prefix, "-")),
+					Pos:      fset.Position(keyLit.Pos()),
+					End:      fset.Position(call.End()),
+					Severity: Warning,
+					Message:  fmt.Sprintf("SetAttribute(%q, ...) should use %s(%q, ...) instead", key, p.helper, suffix),
+					Fix:      fmt.Sprintf("%s supports chaining and groups %s attributes; SetAttribute does not return the element", p.helper, strings.TrimSuffix(p.prefix, "-")),
 				})
 				return true
 			}
@@ -131,10 +135,11 @@ func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnost
 		}
 
 		diags = append(diags, Diagnostic{
-			Pos:     fset.Position(keyLit.Pos()),
-			End:     fset.Position(call.End()),
-			Message: fmt.Sprintf("SetAttribute(%q, ...) bypasses the dedicated field; use .%s() instead", key, method),
-			Fix:     fmt.Sprintf(".%s() manages this attribute through a struct field; SetAttribute writes to the generic attribute slice and can produce duplicate attributes", method),
+			Pos:      fset.Position(keyLit.Pos()),
+			End:      fset.Position(call.End()),
+			Severity: Warning,
+			Message:  fmt.Sprintf("SetAttribute(%q, ...) bypasses the dedicated field; use .%s() instead", key, method),
+			Fix:      fmt.Sprintf(".%s() manages this attribute through a struct field; SetAttribute writes to the generic attribute slice and can produce duplicate attributes", method),
 		})
 
 		return true

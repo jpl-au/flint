@@ -9,10 +9,11 @@ import (
 // literalArgCheck describes a check that flags calls to named functions
 // where the first argument is not a string literal.
 type literalArgCheck struct {
-	names   []string // function/method names to match
-	nargs   int      // exact arg count to match, or -1 for any
-	message string   // fmt pattern for the diagnostic
-	fix     string
+	names    []string // function/method names to match
+	nargs    int      // exact arg count to match, or -1 for any
+	severity Severity
+	message  string // fmt pattern for the diagnostic
+	fix      string
 }
 
 // checkStatic reports calls to Static() where the argument is not a
@@ -20,10 +21,11 @@ type literalArgCheck struct {
 // must not contain dynamic values.
 func (l *Linter) checkStatic(fset *token.FileSet, file *ast.File) []Diagnostic {
 	return l.checkLiteralArgs(fset, file, literalArgCheck{
-		names:   []string{"Static"},
-		nargs:   1,
-		message: "Static() argument must be a string literal; got %s",
-		fix:     "Static() is for string literals only (JIT pre-rendering); replace Static with Text or Textf for dynamic content",
+		names:    []string{"Static"},
+		nargs:    1,
+		severity: Warning,
+		message:  "Static() argument must be a string literal; got %s",
+		fix:      "Static() is for string literals only (JIT pre-rendering); replace Static with Text or Textf for dynamic content",
 	})
 }
 
@@ -32,10 +34,11 @@ func (l *Linter) checkStatic(fset *token.FileSet, file *ast.File) []Diagnostic {
 // so passing dynamic content risks XSS vulnerabilities.
 func (l *Linter) checkRawText(fset *token.FileSet, file *ast.File) []Diagnostic {
 	return l.checkLiteralArgs(fset, file, literalArgCheck{
-		names:   []string{"RawText", "RawTextf"},
-		nargs:   -1,
-		message: "%s() first argument must be a string literal; got %s",
-		fix:     "RawText() bypasses HTML escaping and must use a string literal; replace RawText with Text or Textf for dynamic content",
+		names:    []string{"RawText", "RawTextf"},
+		nargs:    -1,
+		severity: Warning,
+		message:  "%s() first argument must be a string literal; got %s",
+		fix:      "RawText() bypasses HTML escaping and must use a string literal; use security.Safe() for validated dynamic content, or replace RawText with Text or Textf",
 	})
 }
 
@@ -98,10 +101,11 @@ func (l *Linter) checkLiteralArgs(fset *token.FileSet, file *ast.File, check lit
 		}
 
 		diags = append(diags, Diagnostic{
-			Pos:     fset.Position(arg.Pos()),
-			End:     fset.Position(arg.End()),
-			Message: msg,
-			Fix:     check.fix,
+			Pos:      fset.Position(arg.Pos()),
+			End:      fset.Position(arg.End()),
+			Severity: check.severity,
+			Message:  msg,
+			Fix:      check.fix,
 		})
 
 		return true

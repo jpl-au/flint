@@ -54,10 +54,11 @@ func (l *Linter) checkTypedParams(fset *token.FileSet, file *ast.File) []Diagnos
 
 		lit := arg.(*ast.BasicLit)
 		diags = append(diags, Diagnostic{
-			Pos:     fset.Position(arg.Pos()),
-			End:     fset.Position(arg.End()),
-			Message: fmt.Sprintf(".%s() expects a typed constant, not a string literal %s", methodName, lit.Value),
-			Fix:     fmt.Sprintf("Use a value from the %s package (e.g., %s.X) or %s.Custom(...)", enumPkg, enumPkg, enumPkg),
+			Pos:      fset.Position(arg.Pos()),
+			End:      fset.Position(arg.End()),
+			Severity: Warning,
+			Message:  fmt.Sprintf(".%s() expects a typed constant, not a string literal %s", methodName, lit.Value),
+			Fix:      fmt.Sprintf("Use a value from the %s package (e.g., %s.X) or %s.Custom(...)", enumPkg, enumPkg, enumPkg),
 		})
 
 		return true

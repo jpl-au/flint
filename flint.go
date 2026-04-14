@@ -18,12 +18,36 @@ import (
 	"sort"
 )
 
+// Severity classifies the importance of a diagnostic.
+type Severity int
+
+const (
+	// Error indicates code that is incorrect: a missing symbol,
+	// wrong arity, or a chain that will not compile.
+	Error Severity = iota
+
+	// Warning indicates code that works but could be improved:
+	// an idiomatic alternative exists, or the pattern carries risk.
+	Warning
+)
+
+// String returns the lowercase name of the severity level.
+func (s Severity) String() string {
+	switch s {
+	case Warning:
+		return "warning"
+	default:
+		return "error"
+	}
+}
+
 // Diagnostic reports a single problem found in the source code.
 type Diagnostic struct {
-	Pos     token.Position
-	End     token.Position
-	Message string
-	Fix     string
+	Pos      token.Position
+	End      token.Position
+	Severity Severity
+	Message  string
+	Fix      string
 }
 
 // Linter validates Go source code that uses the fluent HTML framework.

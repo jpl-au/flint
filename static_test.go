@@ -74,6 +74,9 @@ func TestCheckStaticPositive(t *testing.T) {
 			for _, d := range diags {
 				if d.Message == tt.want {
 					found = true
+					if d.Severity != Warning {
+						t.Errorf("severity = %v, want Warning", d.Severity)
+					}
 					break
 				}
 			}
@@ -191,6 +194,9 @@ func TestCheckRawTextPositive(t *testing.T) {
 			for _, d := range diags {
 				if d.Message == tt.want {
 					found = true
+					if d.Severity != Warning {
+						t.Errorf("severity = %v, want Warning", d.Severity)
+					}
 					break
 				}
 			}
@@ -273,7 +279,7 @@ func TestRawTextFixMessage(t *testing.T) {
 	if len(diags) != 1 {
 		t.Fatalf("got %d diagnostics, want 1", len(diags))
 	}
-	want := "RawText() bypasses HTML escaping and must use a string literal; replace RawText with Text or Textf for dynamic content"
+	want := "RawText() bypasses HTML escaping and must use a string literal; use security.Safe() for validated dynamic content, or replace RawText with Text or Textf"
 	if diags[0].Fix != want {
 		t.Errorf("Fix = %q, want %q", diags[0].Fix, want)
 	}

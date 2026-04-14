@@ -110,6 +110,9 @@ func build() {}
 			for _, d := range diags {
 				if d.Message == tt.want {
 					found = true
+					if d.Severity != Error {
+						t.Errorf("severity = %v, want Error", d.Severity)
+					}
 					break
 				}
 			}

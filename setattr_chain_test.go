@@ -64,6 +64,9 @@ func TestCheckSetAttrChain(t *testing.T) {
 			for _, d := range diags {
 				if d.Message == tt.want {
 					found = true
+					if d.Severity != Error {
+						t.Errorf("severity = %v, want Error", d.Severity)
+					}
 					break
 				}
 			}
@@ -120,6 +123,9 @@ func TestCheckSetAttrChainScoped(t *testing.T) {
 			for _, d := range diags {
 				if d.Message == tt.want {
 					found = true
+					if d.Severity != Error {
+						t.Errorf("severity = %v, want Error", d.Severity)
+					}
 					break
 				}
 			}

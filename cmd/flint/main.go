@@ -26,8 +26,8 @@
 //
 // Exit codes:
 //
-//	0  No diagnostics found (or -info completed successfully)
-//	1  One or more diagnostics found
+//	0  No errors found (warnings may be present)
+//	1  One or more errors found
 //	2  Usage or I/O error (including unknown element for -info)
 package main
 
@@ -83,7 +83,7 @@ func main() {
 
 	args := flag.Args()
 
-	var found int
+	var errors, warnings int
 	var hadErrors bool
 	var stdinUsed bool
 
@@ -95,13 +95,14 @@ func main() {
 				continue
 			}
 			stdinUsed = true
-			n, err := checkStdin(l)
+			e, w, err := checkStdin(l)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "flint: %v\n", err)
 				hadErrors = true
 				continue
 			}
-			found += n
+			errors += e
+			warnings += w
 			continue
 		}
 
@@ -112,21 +113,24 @@ func main() {
 			continue
 		}
 		for _, path := range files {
-			n, err := checkFile(l, path)
+			e, w, err := checkFile(l, path)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "flint: %v\n", err)
 				hadErrors = true
 				continue
 			}
-			found += n
+			errors += e
+			warnings += w
 		}
 	}
 
 	if hadErrors {
 		os.Exit(2)
 	}
-	if found > 0 {
-		fmt.Fprintf(os.Stderr, "\n%d diagnostic(s) found\n", found)
+	if errors+warnings > 0 {
+		printSummary(errors, warnings)
+	}
+	if errors > 0 {
 		os.Exit(1)
 	}
 }
@@ -195,37 +199,55 @@ func findGoFiles(root string, recursive, includeTests bool) ([]string, error) {
 }
 
 // checkFile reads a file and runs all lint checks against it.
-func checkFile(l *flint.Linter, path string) (int, error) {
+func checkFile(l *flint.Linter, path string) (int, int, error) {
 	src, err := os.ReadFile(path)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	return check(l, path, src)
 }
 
 // checkStdin reads source code from standard input and runs all lint checks.
-func checkStdin(l *flint.Linter) (int, error) {
+func checkStdin(l *flint.Linter) (int, int, error) {
 	src, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		return 0, fmt.Errorf("reading stdin: %w", err)
+		return 0, 0, fmt.Errorf("reading stdin: %w", err)
 	}
 	return check(l, "<stdin>", src)
 }
 
 // check runs all lint checks against src and prints diagnostics to stdout.
-// Returns the number of diagnostics found.
-func check(l *flint.Linter, filename string, src []byte) (int, error) {
+// Returns the number of errors and warnings found.
+func check(l *flint.Linter, filename string, src []byte) (int, int, error) {
 	diags, err := l.Source(filename, src)
 	if err != nil {
-		return 0, fmt.Errorf("parsing %s: %w", filename, err)
+		return 0, 0, fmt.Errorf("parsing %s: %w", filename, err)
 	}
 
+	var errors, warnings int
 	for _, d := range diags {
-		fmt.Printf("%s:%d:%d: %s\n", d.Pos.Filename, d.Pos.Line, d.Pos.Column, d.Message)
+		fmt.Printf("%s:%d:%d: %s: %s\n", d.Pos.Filename, d.Pos.Line, d.Pos.Column, d.Severity, d.Message)
 		if d.Fix != "" {
 			fmt.Printf("  fix: %s\n", d.Fix)
 		}
+		if d.Severity == flint.Warning {
+			warnings++
+		} else {
+			errors++
+		}
 	}
 
-	return len(diags), nil
+	return errors, warnings, nil
+}
+
+// printSummary writes a summary line to stderr.
+func printSummary(errors, warnings int) {
+	var parts []string
+	if errors > 0 {
+		parts = append(parts, fmt.Sprintf("%d error(s)", errors))
+	}
+	if warnings > 0 {
+		parts = append(parts, fmt.Sprintf("%d warning(s)", warnings))
+	}
+	fmt.Fprintf(os.Stderr, "\n%s found\n", strings.Join(parts, " and "))
 }

@@ -164,6 +164,9 @@ func TestCheckSymbolsInvalidPackageFunction(t *testing.T) {
 			for _, d := range diags {
 				if d.Message == tt.want {
 					found = true
+					if d.Severity != Error {
+						t.Errorf("severity = %v, want Error", d.Severity)
+					}
 					break
 				}
 			}
@@ -211,6 +214,9 @@ func TestCheckSymbolsInvalidMethod(t *testing.T) {
 			for _, d := range diags {
 				if d.Message == tt.want {
 					found = true
+					if d.Severity != Error {
+						t.Errorf("severity = %v, want Error", d.Severity)
+					}
 					break
 				}
 			}
@@ -245,6 +251,9 @@ func build() {
 	for _, d := range diags {
 		if d.Message == "div.Fragment does not exist" {
 			found = true
+			if d.Severity != Error {
+				t.Errorf("severity = %v, want Error", d.Severity)
+			}
 			break
 		}
 	}

@@ -89,10 +89,11 @@ func (l *Linter) checkTypedConstructors(fset *token.FileSet, file *ast.File) []D
 		ctor := bestTypedConstructor(pkg.TypedConstructors, childShort)
 		if ctor != "" {
 			diags = append(diags, Diagnostic{
-				Pos:     fset.Position(sel.Sel.Pos()),
-				End:     fset.Position(call.End()),
-				Message: fmt.Sprintf("use %s.%s(...) instead of %s.New(...) for type-safe child nesting", pkgIdent.Name, ctor, pkgIdent.Name),
-				Fix:     fmt.Sprintf("%s.%s(...) accepts only %s elements, catching nesting errors at compile time", pkgIdent.Name, ctor, childPkg),
+				Pos:      fset.Position(sel.Sel.Pos()),
+				End:      fset.Position(call.End()),
+				Severity: Warning,
+				Message:  fmt.Sprintf("use %s.%s(...) instead of %s.New(...) for type-safe child nesting", pkgIdent.Name, ctor, pkgIdent.Name),
+				Fix:      fmt.Sprintf("%s.%s(...) accepts only %s elements, catching nesting errors at compile time", pkgIdent.Name, ctor, childPkg),
 			})
 		}
 

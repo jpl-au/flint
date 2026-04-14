@@ -98,6 +98,9 @@ func TestCheckConstructorUsage(t *testing.T) {
 			for _, d := range diags {
 				if d.Message == tt.want {
 					found = true
+					if d.Severity != Warning {
+						t.Errorf("severity = %v, want Warning", d.Severity)
+					}
 					break
 				}
 			}

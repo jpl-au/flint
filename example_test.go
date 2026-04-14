@@ -48,16 +48,16 @@ func render(name string) {
 	}
 
 	for _, d := range diags {
-		fmt.Printf("line %d: %s\n", d.Pos.Line, d.Message)
+		fmt.Printf("line %d: %s: %s\n", d.Pos.Line, d.Severity, d.Message)
 	}
 
 	// Output:
-	// line 20: Static() argument must be a string literal; got variable "name"
-	// line 21: node.Fragment does not exist
-	// line 22: method Href does not exist on this element
-	// line 23: inputtype.Telephone does not exist
-	// line 24: RawText() first argument must be a string literal; got variable "name"
-	// line 25: .Type() expects a typed constant, not a string literal "email"
-	// line 26: SetAttribute does not return the element; cannot chain .ID() after it
-	// line 27: use div.Text(...) directly instead of div.New().Text(...)
+	// line 20: warning: Static() argument must be a string literal; got variable "name"
+	// line 21: error: node.Fragment does not exist
+	// line 22: error: method Href does not exist on this element
+	// line 23: error: inputtype.Telephone does not exist
+	// line 24: warning: RawText() first argument must be a string literal; got variable "name"
+	// line 25: warning: .Type() expects a typed constant, not a string literal "email"
+	// line 26: error: SetAttribute does not return the element; cannot chain .ID() after it
+	// line 27: warning: use div.Text(...) directly instead of div.New().Text(...)
 }
