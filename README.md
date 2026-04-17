@@ -21,12 +21,29 @@ cat file.go | flint -    # Read from stdin
 
 ### Element info
 
-Use `-info` to inspect the registry entry for any fluent element. This displays its constructors, methods, typed parameters, attribute mappings, and typed constructors.
+Use `-info` to inspect the registry entry for any fluent element. This displays its types, constructors, typed constructors, methods (with any typed parameters), attribute mappings, and vars.
 
 ```bash
 flint -info div          # Show everything about <div>
 flint -info input        # Show everything about <input>
 flint -info ol           # Show everything about <ol>
+```
+
+Pass one or more section names after the element to restrict the output. Each section accepts a long form and (where useful) a short form:
+
+| Long form | Short form |
+|-----------|------------|
+| `types` | |
+| `constructors` | `ctors` |
+| `typed-constructors` | `typed` |
+| `methods` | |
+| `attributes` | `attrs` |
+| `vars` | |
+
+```bash
+flint -info div methods         # Just the methods
+flint -info input ctors attrs   # Constructors and attribute mappings
+flint -info ol typed            # Typed constructors only
 ```
 
 ### Flags
@@ -35,7 +52,7 @@ flint -info ol           # Show everything about <ol>
 |------|-------------|
 | `-include-tests` | Include `_test.go` files (excluded by default) |
 | `-no-registry` | Disable symbol validation (only run Static/RawText checks) |
-| `-info <element>` | Show registry info for an element and exit |
+| `-info <element> [section]...` | Show registry info for an element and exit |
 
 Exit codes: `0` clean, `1` diagnostics found, `2` usage or I/O error.
 

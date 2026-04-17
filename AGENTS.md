@@ -14,12 +14,23 @@ flint ./...
 ```
 
 Use `-info` to look up the API surface of any element before writing
-code. This shows constructors, methods, typed parameters, attribute
-mappings, and typed constructors.
+code. This shows types, constructors, typed constructors, methods
+(with any typed parameters), attribute mappings, and vars.
 
 ```bash
 flint -info div
 flint -info input
+```
+
+Pass one or more section names after the element to restrict the
+output. Each accepts a long form and (where useful) a short form:
+`types`, `constructors`/`ctors`, `typed-constructors`/`typed`,
+`methods`, `attributes`/`attrs`, `vars`.
+
+```bash
+flint -info div methods         # Just the methods
+flint -info input ctors attrs   # Constructors and attribute mappings
+flint -info ol typed            # Typed constructors only
 ```
 
 Or use the library API to lint source code programmatically:

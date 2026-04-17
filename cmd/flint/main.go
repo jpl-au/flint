@@ -4,19 +4,28 @@
 //
 //	flint [flags] <pattern>...
 //	flint [flags] -
-//	flint -info <element>
+//	flint -info <element> [section]...
 //
 // Patterns follow Go conventions: ./... checks all Go files recursively,
 // ./pkg checks a specific directory, or individual .go files can be named
 // directly. When given "-" as the sole argument, it reads from stdin.
 //
-// The -info flag displays the full registry entry for a named element,
-// including its constructors, methods, typed parameters, attribute
-// mappings, and typed constructors. No linting is performed.
+// The -info flag displays the registry entry for a named element,
+// including its types, constructors, typed constructors, methods,
+// attribute mappings, and vars. No linting is performed.
 //
 //	flint -info div
 //	flint -info input
 //	flint -info ol
+//
+// Pass one or more section names after the element to restrict the
+// output. Each section accepts a long form and (where useful) a short
+// form: types, constructors/ctors, typed-constructors/typed, methods,
+// attributes/attrs, vars.
+//
+//	flint -info div methods
+//	flint -info input ctors attrs
+//	flint -info ol typed
 //
 // Flags:
 //
@@ -49,12 +58,19 @@ func main() {
 	infoElement := flag.String("info", "", "Show registry info for an element (e.g. -info div)")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: flint [flags] <pattern>...\n")
-		fmt.Fprintf(os.Stderr, "       flint [flags] -            (read from stdin)\n")
-		fmt.Fprintf(os.Stderr, "       flint -info <element>      (show element info)\n\n")
+		fmt.Fprintf(os.Stderr, "       flint [flags] -                          (read from stdin)\n")
+		fmt.Fprintf(os.Stderr, "       flint -info <element> [section]...       (show element info)\n\n")
 		fmt.Fprintf(os.Stderr, "Patterns:\n")
 		fmt.Fprintf(os.Stderr, "  ./...      Check all .go files recursively\n")
 		fmt.Fprintf(os.Stderr, "  ./pkg      Check all .go files in a directory\n")
 		fmt.Fprintf(os.Stderr, "  file.go    Check a specific file\n\n")
+		fmt.Fprintf(os.Stderr, "Info sections (each accepts a long form and, where useful, a short form):\n")
+		fmt.Fprintf(os.Stderr, "  types\n")
+		fmt.Fprintf(os.Stderr, "  constructors, ctors\n")
+		fmt.Fprintf(os.Stderr, "  typed-constructors, typed\n")
+		fmt.Fprintf(os.Stderr, "  methods\n")
+		fmt.Fprintf(os.Stderr, "  attributes, attrs\n")
+		fmt.Fprintf(os.Stderr, "  vars\n\n")
 		fmt.Fprintf(os.Stderr, "Flags:\n")
 		flag.PrintDefaults()
 	}
@@ -62,7 +78,7 @@ func main() {
 
 	if *infoElement != "" {
 		reg := flint.FluentRegistry()
-		if err := reg.Info(os.Stdout, *infoElement); err != nil {
+		if err := reg.Info(os.Stdout, *infoElement, flag.Args()...); err != nil {
 			fmt.Fprintf(os.Stderr, "flint: %v\n", err)
 			os.Exit(2)
 		}
