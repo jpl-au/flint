@@ -1003,7 +1003,7 @@ func FluentRegistry() *Registry {
 				Vars:      map[string]bool{"False": true, "True": true},
 			},
 			"github.com/jpl-au/fluent/node": {
-				Functions: map[string]int{"Condition": 1, "Func": 1, "Funcs": 1, "Memoise": 2, "Unless": 2, "When": 2},
+				Functions: map[string]int{"Condition": 1, "Func": 1, "Funcs": 1, "Map": 2, "Memoise": 2, "Unless": 2, "When": 2},
 				Types:     map[string]bool{"Attribute": true, "ConditionalBuilder": true, "Dynamic": true, "Element": true, "FuncsComponent": true, "FunctionComponent": true, "MemoisedNode": true, "Memoiser": true, "Node": true},
 			},
 			"github.com/jpl-au/fluent/text": {

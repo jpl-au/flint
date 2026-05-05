@@ -62,6 +62,17 @@ func TestCheckArity(t *testing.T) {
 			imports: []string{"fmt"},
 			body:    `_ = fmt.Sprintf("hello", 1, 2, 3)`,
 		},
+		{
+			name:    "node.Map with 2 args is valid",
+			imports: []string{"github.com/jpl-au/fluent/node"},
+			body:    `_ = node.Map([]int{1, 2}, func(int) node.Node { return nil })`,
+		},
+		{
+			name:    "node.Map with 1 arg is flagged",
+			imports: []string{"github.com/jpl-au/fluent/node"},
+			body:    `_ = node.Map([]int{1, 2})`,
+			want:    "node.Map() expects 2 argument(s), got 1",
+		},
 	}
 
 	for _, tt := range tests {

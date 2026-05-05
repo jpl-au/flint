@@ -48,6 +48,11 @@ func TestCheckSymbolsValidCalls(t *testing.T) {
 			body:    `_ = node.Condition(true)`,
 		},
 		{
+			name:    "node.Map is valid",
+			imports: []string{"github.com/jpl-au/fluent/node"},
+			body:    `_ = node.Map([]int{1, 2}, func(int) node.Node { return nil })`,
+		},
+		{
 			name:    "text.Static is valid",
 			imports: []string{"github.com/jpl-au/fluent/text"},
 			body:    `_ = text.Static("hello")`,

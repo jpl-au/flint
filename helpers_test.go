@@ -96,7 +96,7 @@ func testRegistry() *Registry {
 			"github.com/jpl-au/fluent/node": {
 				Functions: map[string]int{
 					"Condition": 1, "When": 2, "Unless": 2,
-					"Func": 1, "Funcs": 1, "Memoise": 2,
+					"Func": 1, "Funcs": 1, "Map": 2, "Memoise": 2,
 				},
 				Types: map[string]bool{
 					"Node": true, "Element": true, "Dynamic": true,
