@@ -1,8 +1,8 @@
 # Flint
 
-A linter for Go code that uses the [Fluent](https://github.com/jpl-au/fluent) HTML framework. It catches wrong method names, incorrect argument types, unsafe patterns, and missed opportunities for type-safe constructors.
+A linter for Go code that uses the [Fluent](https://github.com/jpl-au/fluent) ecosystem - core Fluent and the companion [fluent-security](https://github.com/jpl-au/fluent-security) package. It catches wrong method names, incorrect argument types, unsafe patterns, and missed opportunities for type-safe constructors.
 
-It is particularly useful with LLM-generated code. LLMs frequently hallucinate Fluent API names or use raw strings where typed constants are required. Flint catches these mistakes and each diagnostic includes a `fix:` field explaining the correction, so the LLM can self-correct without human intervention.
+It is particularly useful with AI-generated code. AI tools frequently hallucinate Fluent API names or use raw strings where typed constants are required. Flint catches these mistakes and each diagnostic includes a `fix:` field explaining the correction, so the agent can self-correct without human intervention.
 
 ## Install
 
@@ -72,12 +72,12 @@ div.Text(userName)             // ok - Text() escapes at runtime
 
 ### Symbol validation
 
-Every function, method, type, and variable reference is checked against the generated registry. This catches typos and hallucinated APIs.
+Every function, method, type, and variable reference is checked against the generated registry. The registry covers the Fluent ecosystem packages, so calls into both core fluent and fluent-security are validated.
 
 ```go
-node.Fragment()           // flagged: node.Fragment does not exist
-div.New().Href("/")       // flagged: method Href does not exist on this element
-inputtype.Telephone       // flagged: inputtype.Telephone does not exist
+node.Fragment()              // flagged: node.Fragment does not exist
+div.New().Href("/")          // flagged: method Href does not exist on this element
+inputtype.Telephone          // flagged: inputtype.Telephone does not exist
 ```
 
 ### Typed constant enforcement

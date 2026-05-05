@@ -45,14 +45,25 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 			diags = append(diags, Diagnostic{
 				Pos:     fset.Position(n.Sel.Pos()),
 				End:     fset.Position(n.Sel.End()),
-				Message: fmt.Sprintf("%s.%s does not exist", lastSegment(importPath), name),
-				Fix:     fmt.Sprintf("Check the %s package for available functions and variables", lastSegment(importPath)),
+				Message: fmt.Sprintf("%s.%s does not exist", pkgName(importPath), name),
+				Fix:     fmt.Sprintf("Check the %s package for available functions and variables", pkgName(importPath)),
 			})
 
 		case *ast.CallExpr:
 			sel, ok := n.Fun.(*ast.SelectorExpr)
 			if !ok {
 				return true
+			}
+
+			// If sel.X is a direct package identifier (e.g. security.CleanUGC),
+			// the SelectorExpr branch above already produced the right
+			// diagnostic. The chained-call check below is for chained
+			// expressions like div.New().Class(x), where sel.X is itself a
+			// CallExpr, not a package Ident.
+			if ident, ok := sel.X.(*ast.Ident); ok {
+				if _, isPkg := imports[ident.Name]; isPkg {
+					return true
+				}
 			}
 
 			pkg, found := chainPackage(sel.X, imports, l.registry)

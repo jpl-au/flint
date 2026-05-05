@@ -53,6 +53,16 @@ func TestCheckSymbolsValidCalls(t *testing.T) {
 			body:    `_ = node.Map([]int{1, 2}, func(int) node.Node { return nil })`,
 		},
 		{
+			name:    "security.HTML is valid",
+			imports: []string{"github.com/jpl-au/fluent-security"},
+			body:    `_ = security.HTML("<b>x</b>")`,
+		},
+		{
+			name:    "security.FromPolicy is valid",
+			imports: []string{"github.com/jpl-au/fluent-security"},
+			body:    `_ = security.FromPolicy(nil)`,
+		},
+		{
 			name:    "text.Static is valid",
 			imports: []string{"github.com/jpl-au/fluent/text"},
 			body:    `_ = text.Static("hello")`,
@@ -131,6 +141,18 @@ func TestCheckSymbolsInvalidPackageFunction(t *testing.T) {
 			imports: []string{"github.com/jpl-au/fluent/node"},
 			body:    `_ = node.Fragment()`,
 			want:    "node.Fragment does not exist",
+		},
+		{
+			name:    "security.CleanUGC does not exist",
+			imports: []string{"github.com/jpl-au/fluent-security"},
+			body:    `_ = security.CleanUGC("<b>x</b>")`,
+			want:    "security.CleanUGC does not exist",
+		},
+		{
+			name:    "security.NewCleaner does not exist",
+			imports: []string{"github.com/jpl-au/fluent-security"},
+			body:    `_ = security.NewCleaner(nil)`,
+			want:    "security.NewCleaner does not exist",
 		},
 		{
 			name:    "div.Email does not exist",

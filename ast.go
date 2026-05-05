@@ -18,7 +18,7 @@ func resolveImports(file *ast.File) map[string]string {
 		if imp.Name != nil {
 			localName = imp.Name.Name
 		} else {
-			localName = lastSegment(path)
+			localName = pkgName(path)
 		}
 
 		imports[localName] = path
@@ -62,6 +62,25 @@ func lastSegment(path string) string {
 		return path[i+1:]
 	}
 	return path
+}
+
+// pkgName returns the local name a Go file would use for an
+// unaliased import of path. Most paths have a last segment that is also
+// the package's declared name, so [lastSegment] is the answer. When the
+// last segment contains hyphens (e.g. "fluent-security") it is not a
+// valid Go identifier and the package's declared name is conventionally
+// the substring after the final hyphen ("security"). This matches how
+// the real fluent ecosystem packages are imported (fluent-security as
+// "security", fluent-htmx as "htmx", fluent-jit as "jit").
+//
+// Used only when the import has no explicit alias - explicit aliases
+// always win.
+func pkgName(path string) string {
+	last := lastSegment(path)
+	if i := strings.LastIndex(last, "-"); i >= 0 {
+		return last[i+1:]
+	}
+	return last
 }
 
 // calleeName returns the simple name of the called function or method.

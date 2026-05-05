@@ -47,6 +47,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"github.com/jpl-au/flint"
@@ -56,6 +57,7 @@ func main() {
 	noRegistry := flag.Bool("no-registry", false, "Disable symbol validation")
 	includeTests := flag.Bool("include-tests", false, "Include _test.go files")
 	infoElement := flag.String("info", "", "Show registry info for an element (e.g. -info div)")
+	showVersion := flag.Bool("version", false, "Print flint version and exit")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: flint [flags] <pattern>...\n")
 		fmt.Fprintf(os.Stderr, "       flint [flags] -                          (read from stdin)\n")
@@ -75,6 +77,11 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(version())
+		return
+	}
 
 	if *infoElement != "" {
 		reg := flint.FluentRegistry()
@@ -266,4 +273,16 @@ func printSummary(errors, warnings int) {
 		parts = append(parts, fmt.Sprintf("%d warning(s)", warnings))
 	}
 	fmt.Fprintf(os.Stderr, "\n%s found\n", strings.Join(parts, " and "))
+}
+
+// version returns a string of the form "flint <version>" suitable
+// for the -version flag. The version comes from the embedded module
+// build info populated by go install (e.g. v0.2.2 from a module
+// installed by tag) and falls back to (devel) for unstamped builds.
+func version() string {
+	v := "(devel)"
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" {
+		v = info.Main.Version
+	}
+	return "flint " + v
 }

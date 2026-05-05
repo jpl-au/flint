@@ -60,8 +60,8 @@ func (l *Linter) checkArity(fset *token.FileSet, file *ast.File) []Diagnostic {
 			diags = append(diags, Diagnostic{
 				Pos:     fset.Position(call.Lparen),
 				End:     fset.Position(call.Rparen),
-				Message: fmt.Sprintf("%s.%s() expects %d argument(s), got %d", lastSegment(importPath), funcName, expected, got),
-				Fix:     fmt.Sprintf("Check the %s.%s signature for the correct number of arguments", lastSegment(importPath), funcName),
+				Message: fmt.Sprintf("%s.%s() expects %d argument(s), got %d", pkgName(importPath), funcName, expected, got),
+				Fix:     fmt.Sprintf("Check the %s.%s signature for the correct number of arguments", pkgName(importPath), funcName),
 			})
 		}
 

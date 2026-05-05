@@ -1010,6 +1010,11 @@ func FluentRegistry() *Registry {
 				Functions: map[string]int{"RawText": 1, "RawTextf": -1, "Static": 1, "Text": 1, "Textf": -1},
 				Types:     map[string]bool{"Node": true},
 			},
+			"github.com/jpl-au/fluent-security": {
+				Functions: map[string]int{"FromPolicy": 1, "HTML": 1, "New": 0, "Nonce": 0, "PlainText": 1, "RichText": 0},
+				Types:     map[string]bool{"Cleaner": true},
+				Methods:   map[string]bool{"Allow": true, "AllowAttr": true, "AllowClasses": true, "Clean": true},
+			},
 		},
 	}
 }

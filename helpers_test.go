@@ -103,6 +103,17 @@ func testRegistry() *Registry {
 					"Attribute": true, "Memoiser": true,
 				},
 			},
+			"github.com/jpl-au/fluent-security": {
+				Functions: map[string]int{
+					"HTML": 1, "PlainText": 1, "New": 0,
+					"RichText": 0, "FromPolicy": 1, "Nonce": 0,
+				},
+				Types: map[string]bool{"Cleaner": true},
+				Methods: map[string]bool{
+					"Allow": true, "AllowAttr": true,
+					"AllowClasses": true, "Clean": true,
+				},
+			},
 			"github.com/jpl-au/fluent/html5/attr/inputtype": {
 				Vars: map[string]bool{
 					"Text": true, "Email": true, "Password": true,

@@ -1,8 +1,9 @@
 # Flint - Fluent Linter
 
-Flint validates Go source code that uses the Fluent HTML framework.
-It catches mistakes that LLMs commonly make when generating Fluent
-code, creating a reinforcing loop: write code, lint, fix, repeat.
+Flint validates Go source code that uses the Fluent ecosystem -
+core Fluent and the companion fluent-security package. It catches
+mistakes that AI tools commonly make when generating Fluent code,
+creating a reinforcing loop: write code, lint, fix, repeat.
 
 ## How to use flint in your workflow
 
@@ -67,9 +68,10 @@ div.Text(userName)             // escaped at runtime
 
 ### Symbol validation
 
-Catches non-existent functions, methods, types, and variables.
-LLMs frequently hallucinate API names that look plausible but do
-not exist.
+Catches non-existent functions, methods, types, and variables
+across the Fluent ecosystem packages (core fluent and
+fluent-security). AI tools frequently hallucinate API names that
+look plausible but do not exist.
 
 ```go
 // Wrong
@@ -171,7 +173,7 @@ import "github.com/jpl-au/fluent/html5/var"       // use "variable"
 
 ## Methods that do NOT exist
 
-These are the most common LLM hallucinations. Flint catches all of
+These are the most common AI hallucinations. Flint catches all of
 them via symbol validation.
 
 | Non-existent | Use instead |
@@ -187,9 +189,9 @@ them via symbol validation.
 
 The registry is generated from the same YAML specs that produce
 Fluent's element packages. It contains every function, method, type,
-variable, typed parameter, and attribute mapping across all Fluent
-packages. When the generator runs, it can regenerate the registry
-to stay in sync.
+variable, typed parameter, and attribute mapping across the Fluent
+ecosystem packages (core fluent, plus fluent-security). When the
+generator runs, it can regenerate the registry to stay in sync.
 
 Pass `flint.FluentRegistry()` to enable full validation. Pass `nil`
 for Static/RawText checks only.
