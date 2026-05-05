@@ -29,19 +29,6 @@ func (l *Linter) checkStatic(fset *token.FileSet, file *ast.File) []Diagnostic {
 	})
 }
 
-// checkRawText reports calls to RawText() and RawTextf() where the
-// first argument is not a string literal. Raw text is not HTML-escaped,
-// so passing dynamic content risks XSS vulnerabilities.
-func (l *Linter) checkRawText(fset *token.FileSet, file *ast.File) []Diagnostic {
-	return l.checkLiteralArgs(fset, file, literalArgCheck{
-		names:    []string{"RawText", "RawTextf"},
-		nargs:    -1,
-		severity: Warning,
-		message:  "%s() first argument must be a string literal; got %s",
-		fix:      "RawText() bypasses HTML escaping and must use a string literal; use security.Safe() for validated dynamic content, or replace RawText with Text or Textf",
-	})
-}
-
 // checkLiteralArgs walks the AST and reports calls matching check where
 // the first argument is not a string literal. Only flags calls on
 // fluent elements (scoped via the registry).
