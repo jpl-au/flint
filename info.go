@@ -24,7 +24,10 @@ var InfoSections = map[string]string{
 
 // Info writes the registry entry for the named element to w. The name
 // is matched against the final path segment of each registered import
-// path (e.g. "div" matches "github.com/jpl-au/fluent/html5/div").
+// path (e.g. "div" matches "github.com/jpl-au/fluent/html5/div"), or
+// against the HTML tag an element package renders, so tags that
+// collide with Go keywords resolve too (e.g. "select" matches the
+// dropdown package).
 //
 // If sections is non-empty, only the listed sections are written.
 // Accepted names (long and short forms) are defined by InfoSections.
@@ -48,13 +51,33 @@ func (r *Registry) Info(w io.Writer, name string, sections ...string) error {
 			break
 		}
 	}
+
+	// The queried name may be an HTML tag rather than a package name:
+	// tags that are Go keywords live in differently named packages
+	// (select in dropdown, main in primary, var in variable, map in
+	// imagemap).
+	if !found {
+		for path, p := range r.Packages {
+			if p.Tag == name {
+				pkg = p
+				importPath = path
+				found = true
+				break
+			}
+		}
+	}
 	if !found {
 		return fmt.Errorf("unknown element %q", name)
 	}
 
 	pw := &prefixWriter{w: w}
 
-	pw.printf("Element: %s\n", name)
+	pkgName := lastSegment(importPath)
+	if pkg.Tag != "" && pkg.Tag != pkgName {
+		pw.printf("Element: %s (renders <%s>; %q is a Go reserved word)\n", pkgName, pkg.Tag, pkg.Tag)
+	} else {
+		pw.printf("Element: %s\n", pkgName)
+	}
 	pw.printf("Import:  %s\n", importPath)
 
 	if show("types") && len(pkg.Types) > 0 {

@@ -55,6 +55,7 @@ type Diagnostic struct {
 type Linter struct {
 	registry    *Registry
 	attrMethods map[string]string
+	tagAliases  map[string]string
 }
 
 // New creates a Linter with the given registry. Pass FluentRegistry()
@@ -63,6 +64,7 @@ func New(r *Registry) *Linter {
 	l := &Linter{registry: r}
 	if r != nil {
 		l.attrMethods = mergeAttrMethods(r)
+		l.tagAliases = r.TagAliases()
 	}
 	return l
 }

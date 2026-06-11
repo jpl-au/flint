@@ -12,6 +12,12 @@ type Registry struct {
 
 // Package describes the exported symbols of a single Go package.
 type Package struct {
+	// Tag is the HTML tag an element package renders, e.g. "div" for
+	// the div package or "select" for the dropdown package. It differs
+	// from the package name only where the tag is a Go keyword
+	// (select, main, var, map). Empty for non-element packages.
+	Tag string
+
 	// Functions maps package-level exported function names to their
 	// expected argument count. A value of -1 indicates a variadic
 	// function that accepts any number of arguments. The linter uses
@@ -53,11 +59,16 @@ type Package struct {
 	TypedConstructors map[string]string
 }
 
-// ReservedAliases maps Go reserved keyword package names to their
-// correct fluent package alternatives. These are checked at the
-// import level, not per-package.
-var ReservedAliases = map[string]string{
-	"select": "dropdown",
-	"main":   "primary",
-	"var":    "variable",
+// TagAliases returns a map from HTML tag to fluent package name for
+// element packages whose name differs from the tag they render. These
+// are tags that collide with Go keywords: select, main, var, and map
+// become dropdown, primary, variable, and imagemap.
+func (r *Registry) TagAliases() map[string]string {
+	aliases := make(map[string]string)
+	for path, pkg := range r.Packages {
+		if name := lastSegment(path); pkg.Tag != "" && pkg.Tag != name {
+			aliases[pkg.Tag] = name
+		}
+	}
+	return aliases
 }

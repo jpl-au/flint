@@ -10,7 +10,9 @@ import (
 // checkImports reports imports that use Go reserved keywords as
 // package names when fluent provides an alternative. For example,
 // html5/select should be html5/dropdown, html5/main should be
-// html5/primary, and html5/var should be html5/variable.
+// html5/primary, and html5/var should be html5/variable. The aliases
+// are derived from the registry, so this check is skipped when the
+// linter has no registry.
 func (l *Linter) checkImports(fset *token.FileSet, file *ast.File) []Diagnostic {
 	var diags []Diagnostic
 
@@ -25,7 +27,7 @@ func (l *Linter) checkImports(fset *token.FileSet, file *ast.File) []Diagnostic 
 		// Extract the last segment of the import path.
 		seg := lastSegment(path)
 
-		alt, reserved := ReservedAliases[seg]
+		alt, reserved := l.tagAliases[seg]
 		if !reserved {
 			continue
 		}

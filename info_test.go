@@ -76,6 +76,22 @@ func TestInfo(t *testing.T) {
 			want:    []string{"New(...)  variadic\n  RawText("},
 		},
 		{
+			name:    "reserved tag resolves to aliased package",
+			element: "select",
+			want: []string{
+				`Element: dropdown (renders <select>; "select" is a Go reserved word)`,
+				"Import:  github.com/jpl-au/fluent/html5/dropdown",
+			},
+		},
+		{
+			name:    "aliased package notes the tag it renders",
+			element: "imagemap",
+			want: []string{
+				`Element: imagemap (renders <map>; "map" is a Go reserved word)`,
+				"Import:  github.com/jpl-au/fluent/html5/imagemap",
+			},
+		},
+		{
 			name:    "unknown element returns error",
 			element: "nonexistent",
 			wantErr: "unknown element",

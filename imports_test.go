@@ -6,7 +6,7 @@ import (
 )
 
 func TestCheckReservedImports(t *testing.T) {
-	l := New(nil)
+	l := New(FluentRegistry())
 
 	tests := []struct {
 		name string
@@ -42,6 +42,19 @@ import "github.com/jpl-au/fluent/html5/var"
 func build() { _ = var.New() }
 `),
 			want: `"var" is a Go reserved keyword; use "variable" instead`,
+		},
+		{
+			// A named import parses (the path segment is a keyword but
+			// the identifier is not), so this case exercises the check
+			// end to end rather than skipping on a parse error.
+			name: "html5/map is flagged",
+			src: []byte(`package ui
+
+import m "github.com/jpl-au/fluent/html5/map"
+
+func build() { _ = m.New() }
+`),
+			want: `"map" is a Go reserved keyword; use "imagemap" instead`,
 		},
 		{
 			name: "html5/div is fine",
