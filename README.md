@@ -133,6 +133,32 @@ import "github.com/jpl-au/fluent/html5/select"  // flagged: use "dropdown" inste
 import "github.com/jpl-au/fluent/html5/main"     // flagged: use "primary" instead
 ```
 
+### Children built with append
+
+A local `[]node.Node` that is grown with `append` and then splatted into a Fluent call is flagged: Fluent composes children directly, so the intermediate slice is redundant. The fix names the right idiom for the shape it sees - `node.When`/`node.Unless` for a conditional child, `node.Map` for a loop, and variadic children or `.Add(...)` for the plain case.
+
+```go
+// flagged
+kids := []node.Node{}
+if isAdmin { kids = append(kids, span.Text("admin")) }
+return div.New(kids...)
+
+// the idiom
+return div.New(node.When(isAdmin, span.Text("admin")))
+```
+
+```go
+// flagged
+rows := make([]node.Node, 0, len(items))
+for _, it := range items { rows = append(rows, row(it)) }
+return ul.New(rows...)
+
+// the idiom
+return ul.New(node.Map(items, row))
+```
+
+The check is conservative: it fires only when the slice is a local whose element type resolves to a Fluent node, is grown by at least one append, is consumed by exactly one splat, and is used nowhere else (not indexed, returned, or passed un-splatted). Slices that escape those bounds are left alone.
+
 ## Library usage
 
 Flint can be used as a library for custom tooling or editor integrations.

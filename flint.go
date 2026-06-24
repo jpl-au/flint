@@ -96,6 +96,7 @@ func (l *Linter) Source(filename string, src []byte) ([]Diagnostic, error) {
 	diags = append(diags, l.checkTypedConstructors(fset, file)...)
 	diags = append(diags, l.checkSymbols(fset, file)...)
 	diags = append(diags, l.checkArity(fset, file)...)
+	diags = append(diags, l.checkNodeAppend(fset, file)...)
 
 	sort.Slice(diags, func(i, j int) bool {
 		if diags[i].Pos.Line != diags[j].Pos.Line {

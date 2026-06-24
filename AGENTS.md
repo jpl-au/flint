@@ -171,6 +171,34 @@ import "github.com/jpl-au/fluent/html5/main"     // use "primary"
 import "github.com/jpl-au/fluent/html5/var"       // use "variable"
 ```
 
+### Children built with append
+
+A local `[]node.Node` grown with `append` and then splatted into a Fluent
+call is redundant - compose the children directly. The fix names the idiom
+for the shape: `node.When`/`node.Unless` for a conditional child, `node.Map`
+for a loop, variadic children or `.Add(...)` for the plain case.
+
+```go
+// Wrong - accumulate then splat
+kids := []node.Node{}
+if isAdmin { kids = append(kids, span.Text("admin")) }
+return div.New(kids...)
+
+// Right - conditional child
+return div.New(node.When(isAdmin, span.Text("admin")))
+
+// Wrong - loop then splat
+rows := make([]node.Node, 0, len(items))
+for _, it := range items { rows = append(rows, row(it)) }
+return ul.New(rows...)
+
+// Right - map a slice
+return ul.New(node.Map(items, row))
+```
+
+Only fires for a local node slice grown by append, consumed by exactly one
+splat, and used nowhere else (not indexed, returned, or passed un-splatted).
+
 ## Methods that do NOT exist
 
 These are the most common AI hallucinations. Flint catches all of
