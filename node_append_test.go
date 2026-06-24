@@ -57,6 +57,46 @@ kids = append(kids, div.New())
 _ = render(kids...)`,
 			wantIn: "passing children directly",
 		},
+		{
+			name: "negated if suggests Unless",
+			body: `kids := []node.Node{}
+if !cond {
+	kids = append(kids, div.New())
+}
+_ = div.New(kids...)`,
+			wantIn: "node.Unless(cond, child)",
+		},
+		{
+			name: "else-only append suggests Unless",
+			body: `kids := []node.Node{}
+if cond {
+} else {
+	kids = append(kids, div.New())
+}
+_ = div.New(kids...)`,
+			wantIn: "node.Unless(cond, child)",
+		},
+		{
+			name: "if/else appending in both branches suggests Condition",
+			body: `kids := []node.Node{}
+if cond {
+	kids = append(kids, div.New())
+} else {
+	kids = append(kids, div.New())
+}
+_ = div.New(kids...)`,
+			wantIn: "node.Condition(cond).True(child).False(child)",
+		},
+		{
+			name: "switch append suggests Funcs",
+			body: `kids := []node.Node{}
+switch n {
+case 1:
+	kids = append(kids, div.New())
+}
+_ = div.New(kids...)`,
+			wantIn: "node.Funcs(func() []node.Node { ... })",
+		},
 	}
 
 	for _, tt := range tests {

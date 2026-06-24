@@ -107,13 +107,13 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 			continue
 		}
 
-		anyIf, anyLoop := classifyAppends(body, name)
+		class := classifyAppends(body, name)
 		diags = append(diags, Diagnostic{
 			Pos:      fset.Position(declIdent.Pos()),
 			End:      fset.Position(splat.End()),
 			Severity: Warning,
 			Message:  fmt.Sprintf("build the element's children with Fluent composition instead of accumulating %q with append", name),
-			Fix:      nodeAppendFix(anyIf, anyLoop),
+			Fix:      nodeAppendFix(class),
 		})
 	}
 
@@ -208,21 +208,86 @@ func isAppendTo(s *ast.AssignStmt, name string) bool {
 	return ok && arg0.Name == name
 }
 
-// classifyAppends reports whether any append to name sits inside a conditional
-// (an if) or a loop (a for/range), so the fix can name node.When / node.Map.
-func classifyAppends(body *ast.BlockStmt, name string) (anyIf, anyLoop bool) {
+// conditionalKind describes how an appending if-statement maps onto Fluent's
+// conditional helpers.
+type conditionalKind int
+
+const (
+	condWhen   conditionalKind = iota // node.When(cond, child)
+	condUnless                        // node.Unless(cond, child)
+	condBoth                          // node.Condition(cond).True(child).False(child)
+)
+
+// appendClass records the control-flow shapes that wrap the appends to an
+// accumulator, so the fix can name the Fluent idiom matching each one.
+type appendClass struct {
+	when   bool // a plain conditional child: if cond { append }
+	unless bool // a negated or else-only conditional child
+	both   bool // an if/else that appends in both branches
+	loop   bool // a for/range loop
+	branch bool // a switch/select that builds children by branching
+}
+
+// classifyAppends inspects the top-level statements that append to name and
+// records which Fluent composition idioms the fix should suggest.
+func classifyAppends(body *ast.BlockStmt, name string) appendClass {
+	var c appendClass
 	for _, stmt := range body.List {
-		if !stmtHasAppendTo(stmt, name) {
-			continue
-		}
-		switch stmt.(type) {
-		case *ast.ForStmt, *ast.RangeStmt:
-			anyLoop = true
-		case *ast.IfStmt:
-			anyIf = true
+		if stmtHasAppendTo(stmt, name) {
+			c.classify(stmt, name)
 		}
 	}
-	return anyIf, anyLoop
+	return c
+}
+
+// classify records the idiom implied by a single appending statement, unwrapping
+// a labelled statement to the loop or switch it labels.
+func (c *appendClass) classify(stmt ast.Stmt, name string) {
+	switch s := stmt.(type) {
+	case *ast.ForStmt, *ast.RangeStmt:
+		c.loop = true
+	case *ast.SwitchStmt, *ast.TypeSwitchStmt, *ast.SelectStmt:
+		c.branch = true
+	case *ast.LabeledStmt:
+		c.classify(s.Stmt, name)
+	case *ast.IfStmt:
+		switch ifKind(s, name) {
+		case condUnless:
+			c.unless = true
+		case condBoth:
+			c.both = true
+		default:
+			c.when = true
+		}
+	}
+}
+
+// ifKind decides which conditional idiom an appending if maps to: Condition when
+// both branches append, Unless when only the else branch appends or the condition
+// is negated, and When otherwise.
+func ifKind(s *ast.IfStmt, name string) conditionalKind {
+	thenAppends := stmtHasAppendTo(s.Body, name)
+	elseAppends := s.Else != nil && stmtHasAppendTo(s.Else, name)
+	switch {
+	case thenAppends && elseAppends:
+		return condBoth
+	case elseAppends:
+		return condUnless
+	case isNegated(s.Cond):
+		return condUnless
+	default:
+		return condWhen
+	}
+}
+
+// isNegated reports whether cond is a logical negation (!x), ignoring one layer
+// of parentheses.
+func isNegated(cond ast.Expr) bool {
+	if p, ok := cond.(*ast.ParenExpr); ok {
+		cond = p.X
+	}
+	u, ok := cond.(*ast.UnaryExpr)
+	return ok && u.Op == token.NOT
 }
 
 // stmtHasAppendTo reports whether stmt contains an append to name anywhere within.
@@ -238,15 +303,24 @@ func stmtHasAppendTo(stmt ast.Stmt, name string) bool {
 	return found
 }
 
-// nodeAppendFix builds the fix advice, naming the conditional and loop idioms
-// only when the code actually uses those shapes.
-func nodeAppendFix(anyIf, anyLoop bool) string {
+// nodeAppendFix builds the fix advice, naming only the idioms the code's shape
+// actually calls for.
+func nodeAppendFix(c appendClass) string {
 	var options []string
-	if anyIf {
+	if c.when {
 		options = append(options, "node.When(cond, child) for a conditional child")
 	}
-	if anyLoop {
+	if c.unless {
+		options = append(options, "node.Unless(cond, child) for a negated conditional child")
+	}
+	if c.both {
+		options = append(options, "node.Condition(cond).True(child).False(child) for an if/else")
+	}
+	if c.loop {
 		options = append(options, "node.Map(items, fn) for a loop")
+	}
+	if c.branch {
+		options = append(options, "node.Funcs(func() []node.Node { ... }) for branching that builds a slice")
 	}
 	options = append(options, "passing children directly to the constructor or via .Add(...)")
 	return "compose children with Fluent instead of a []node.Node grown by append: " + strings.Join(options, "; ")
