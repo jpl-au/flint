@@ -136,7 +136,7 @@ func nodeAppendFix(c appendClass) string {
 		options = append(options, "node.Condition(cond).True(child).False(child) for an if/else")
 	}
 	if c.loop {
-		options = append(options, "node.Map(items, fn) for a loop")
+		options = append(options, "node.Funcs(func() []node.Node { ... }) to build the children yourself, or node.Map(slice, fn) for a per-element slice mapping (Go generics)")
 	}
 	if c.branch {
 		options = append(options, "node.Funcs(func() []node.Node { ... }) for branching that builds a slice")

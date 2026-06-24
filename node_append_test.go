@@ -34,7 +34,7 @@ for _, it := range items {
 	rows = append(rows, div.Text(it))
 }
 _ = div.New(rows...)`,
-			wantIn: "node.Map(items, fn) for a loop",
+			wantIn: "node.Map(slice, fn)",
 		},
 		{
 			name: "var declaration with plain append",
