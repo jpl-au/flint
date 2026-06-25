@@ -54,55 +54,30 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 			continue
 		}
 
-		// One pass to collect the appends, the splat, and the set of identifier
-		// occurrences that are legitimate uses of this accumulator.
-		blessed := map[*ast.Ident]bool{declIdent: true}
-		appendCount := 0
-		splatCount := 0
-		var splat *ast.CallExpr
-
-		ast.Inspect(body, func(n ast.Node) bool {
-			switch x := n.(type) {
-			case *ast.AssignStmt:
-				if isAppendTo(x, name) {
-					appendCount++
-					blessed[x.Lhs[0].(*ast.Ident)] = true
-					if arg0, ok := x.Rhs[0].(*ast.CallExpr).Args[0].(*ast.Ident); ok {
-						blessed[arg0] = true
-					}
-				}
-			case *ast.CallExpr:
-				// A splat is f(..., name...). Exclude append/copy: feeding the slice
-				// into another append is a merge, not a sink we can inline.
-				if x.Ellipsis.IsValid() && len(x.Args) > 0 {
-					if id, ok := x.Args[len(x.Args)-1].(*ast.Ident); ok && id.Name == name {
-						if c := calleeName(x); c != "append" && c != "copy" {
-							splatCount++
-							splat = x
-							blessed[id] = true
-						}
-					}
-				}
-			}
-			return true
-		})
-
-		if appendCount == 0 || splatCount != 1 {
+		// Read the function for this accumulator, scope-aware: a same-named
+		// variable in another scope is a different variable, not this one.
+		sc := scanAccumulator(body, name, declIdent)
+		if sc.splats != 1 {
 			continue
 		}
 
-		// Any occurrence of the name that is not a blessed use (the declaration, an
-		// append, or the splat) means the slice does more than accumulate-then-splat;
-		// stay quiet rather than suggest an unsafe rewrite.
-		other := false
-		ast.Inspect(body, func(n ast.Node) bool {
-			if id, ok := n.(*ast.Ident); ok && id.Name == name && !blessed[id] {
-				other = true
-				return false
-			}
-			return true
-		})
-		if other {
+		// An append inside a defer or goroutine runs after the element has
+		// already taken the slice, so those children never reach the output.
+		if sc.tooLate {
+			diags = append(diags, Diagnostic{
+				Pos:      fset.Position(declIdent.Pos()),
+				End:      fset.Position(sc.splat.End()),
+				Severity: Warning,
+				Message:  fmt.Sprintf("%q is appended to inside a defer or goroutine, after it has already been passed in - those children will not appear", name),
+				Fix:      "build the children before passing the slice in; an append in a defer or goroutine runs too late to reach the element",
+			})
+			continue
+		}
+
+		// No appends, or the slice is used in some other way (read elsewhere,
+		// mutated in a plain closure, indexed, re-sliced): stay quiet rather than
+		// suggest a rewrite that may not be safe.
+		if sc.appends == 0 || sc.other {
 			continue
 		}
 
@@ -112,7 +87,7 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 		// function or a method on a local of unknown type does not resolve, so
 		// the advice drops the element-specific wording rather than inventing a
 		// constructor that is not there.
-		_, intoElement := chainPackage(splat.Fun, imports, l.registry)
+		_, intoElement := chainPackage(sc.splat.Fun, imports, l.registry)
 		message := fmt.Sprintf("compose these children with Fluent instead of accumulating %q with append", name)
 		if intoElement {
 			message = fmt.Sprintf("build the element's children with Fluent composition instead of accumulating %q with append", name)
@@ -123,7 +98,7 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 		}
 		diags = append(diags, Diagnostic{
 			Pos:      fset.Position(declIdent.Pos()),
-			End:      fset.Position(splat.End()),
+			End:      fset.Position(sc.splat.End()),
 			Severity: Warning,
 			Message:  message,
 			Fix:      fix,

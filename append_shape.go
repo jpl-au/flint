@@ -27,6 +27,21 @@ func isAppendTo(s *ast.AssignStmt, name string) bool {
 	return ok && arg0.Name == name
 }
 
+// isSplat reports whether call spreads the slice named name as its final
+// argument (f(..., name...)). append and copy are excluded: feeding the slice
+// into another append is a merge, not a sink we can inline.
+func isSplat(call *ast.CallExpr, name string) bool {
+	if !call.Ellipsis.IsValid() || len(call.Args) == 0 {
+		return false
+	}
+	id, ok := call.Args[len(call.Args)-1].(*ast.Ident)
+	if !ok || id.Name != name {
+		return false
+	}
+	c := calleeName(call)
+	return c != "append" && c != "copy"
+}
+
 // stmtHasAppendTo reports whether stmt contains an append to name anywhere within.
 func stmtHasAppendTo(stmt ast.Stmt, name string) bool {
 	found := false
