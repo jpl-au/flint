@@ -117,12 +117,16 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 		if intoElement {
 			message = fmt.Sprintf("build the element's children with Fluent composition instead of accumulating %q with append", name)
 		}
+		fix := nodeAppendFix(class, intoElement)
+		if makeWithLength(stmt) {
+			fix += fmt.Sprintf("; note: make([]node.Node, n) seeds %q with n nil entries before the appended children - use make([]node.Node, 0, n) to reserve capacity", name)
+		}
 		diags = append(diags, Diagnostic{
 			Pos:      fset.Position(declIdent.Pos()),
 			End:      fset.Position(splat.End()),
 			Severity: Warning,
 			Message:  message,
-			Fix:      nodeAppendFix(class, intoElement),
+			Fix:      fix,
 		})
 	}
 

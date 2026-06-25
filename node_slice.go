@@ -53,6 +53,27 @@ func (l *Linter) rhsIsNodeSlice(expr ast.Expr, imports map[string]string) bool {
 	return false
 }
 
+// makeWithLength reports whether stmt declares a node slice via make with a
+// non-zero length argument, e.g. make([]node.Node, n). That seeds the slice
+// with n nil entries; growing it with append after is almost always a slip for
+// make([]node.Node, 0, n). make([]node.Node, 0) is the empty form and is fine.
+func makeWithLength(stmt ast.Stmt) bool {
+	as, ok := stmt.(*ast.AssignStmt)
+	if !ok || len(as.Rhs) != 1 {
+		return false
+	}
+	call, ok := as.Rhs[0].(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	id, ok := call.Fun.(*ast.Ident)
+	if !ok || id.Name != "make" || len(call.Args) != 2 {
+		return false
+	}
+	lit, ok := call.Args[1].(*ast.BasicLit)
+	return !(ok && lit.Kind == token.INT && lit.Value == "0")
+}
+
 // isNodeSliceType reports whether expr is a slice type whose element is a Fluent
 // node type (node.Node or node.Element), scoped through the registry so only
 // Fluent slices match.

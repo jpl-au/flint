@@ -51,6 +51,13 @@ _ = div.New(kids...)`,
 			wantIn: "passing children directly",
 		},
 		{
+			name: "make with length notes the nil entries",
+			body: `kids := make([]node.Node, 3)
+kids = append(kids, div.New())
+_ = div.New(kids...)`,
+			wantIn: "n nil entries before the appended children",
+		},
+		{
 			name: "non-fluent sink flagged with generic, non-element wording",
 			body: `kids := []node.Node{}
 kids = append(kids, div.New())
