@@ -31,6 +31,70 @@ helper := func(kids int) { _ = kids }
 _ = helper
 _ = div.New(kids...)`,
 		},
+		{
+			name: "type-switch guard binds the name in another scope",
+			body: `kids := []node.Node{}
+kids = append(kids, div.New())
+var v any
+switch kids := v.(type) {
+case int:
+	_ = kids
+}
+_ = div.New(kids...)`,
+		},
+		{
+			name: "select comm-clause binds the name in another scope",
+			body: `kids := []node.Node{}
+kids = append(kids, div.New())
+ch := make(chan []node.Node)
+select {
+case kids := <-ch:
+	_ = kids
+}
+_ = div.New(kids...)`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			src := wrapWithImports([]string{nodePkg, divPkg}, tt.body)
+			diags, err := l.Source("test.go", src)
+			if err != nil {
+				t.Fatalf("parse error: %v", err)
+			}
+			if _, ok := findNodeAppend(diags); !ok {
+				t.Fatalf("expected a node-append diagnostic, got %d", len(diags))
+			}
+		})
+	}
+}
+
+// TestNodeAppendDeferGoSplatFires covers a splat passed as an argument to a
+// defer/goroutine call. The arguments evaluate immediately, so it is a real
+// spread of the finished slice and must fire, not stay silent.
+func TestNodeAppendDeferGoSplatFires(t *testing.T) {
+	l := New(FluentRegistry())
+	tests := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "deferred call",
+			body: `kids := []node.Node{}
+kids = append(kids, div.New())
+defer sink(kids...)`,
+		},
+		{
+			name: "goroutine call",
+			body: `kids := []node.Node{}
+kids = append(kids, div.New())
+go sink(kids...)`,
+		},
+		{
+			name: "immediately-invoked goroutine literal",
+			body: `kids := []node.Node{}
+kids = append(kids, div.New())
+go func(ns ...node.Node) {}(kids...)`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -90,6 +154,24 @@ kids = append(kids, div.New())
 _ = div.New(kids...)
 _ = div.New(kids...)`,
 		},
+		{
+			name: "range reassigns the accumulator (value position)",
+			body: `var kids []node.Node
+var rows [][]node.Node
+kids = append(kids, div.New())
+for _, kids = range rows {
+}
+_ = div.New(kids...)`,
+		},
+		{
+			name: "range reassigns the accumulator (key position)",
+			body: `var kids []node.Node
+var rows [][]node.Node
+kids = append(kids, div.New())
+for kids = range rows {
+}
+_ = div.New(kids...)`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -124,6 +206,20 @@ _ = div.New(kids...)`,
 			body: `kids := []node.Node{}
 go func() { kids = append(kids, div.New()) }()
 _ = div.New(kids...)`,
+		},
+		{
+			name: "parenthesised function literal in defer",
+			body: `kids := []node.Node{}
+_ = div.New(kids...)
+defer (func() { kids = append(kids, div.New()) })()`,
+		},
+		{
+			name: "closure nested inside a deferred closure",
+			body: `kids := []node.Node{}
+_ = div.New(kids...)
+defer func() {
+	func() { kids = append(kids, div.New()) }()
+}()`,
 		},
 	}
 	for _, tt := range tests {

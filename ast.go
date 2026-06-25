@@ -35,6 +35,9 @@ func chainPackage(expr ast.Expr, imports map[string]string, reg *Registry) (Pack
 	case *ast.CallExpr:
 		return chainPackage(e.Fun, imports, reg)
 
+	case *ast.ParenExpr:
+		return chainPackage(e.X, imports, reg)
+
 	case *ast.SelectorExpr:
 		if ident, ok := e.X.(*ast.Ident); ok {
 			if importPath, ok := imports[ident.Name]; ok {
@@ -54,6 +57,17 @@ func chainPackage(expr ast.Expr, imports map[string]string, reg *Registry) (Pack
 	}
 
 	return Package{}, false
+}
+
+// unparen strips any enclosing parentheses from expr.
+func unparen(expr ast.Expr) ast.Expr {
+	for {
+		p, ok := expr.(*ast.ParenExpr)
+		if !ok {
+			return expr
+		}
+		expr = p.X
+	}
 }
 
 // lastSegment returns the last path segment of an import path.

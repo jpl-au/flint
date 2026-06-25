@@ -3,6 +3,7 @@ package flint
 import (
 	"go/ast"
 	"go/token"
+	"strconv"
 )
 
 // nodeSliceDecl reports the name and declaring identifier when stmt declares a
@@ -70,8 +71,15 @@ func makeWithLength(stmt ast.Stmt) bool {
 	if !ok || id.Name != "make" || len(call.Args) != 2 {
 		return false
 	}
-	lit, ok := call.Args[1].(*ast.BasicLit)
-	return !(ok && lit.Kind == token.INT && lit.Value == "0")
+	// A literal length is note-worthy only when it is genuinely non-zero. Any
+	// computed length cannot be evaluated from the AST alone, so assume it seeds
+	// nil entries and keep the note.
+	lit, ok := unparen(call.Args[1]).(*ast.BasicLit)
+	if !ok || lit.Kind != token.INT {
+		return true
+	}
+	n, err := strconv.ParseInt(lit.Value, 0, 64)
+	return err != nil || n != 0
 }
 
 // isNodeSliceType reports whether expr is a slice type whose element is a Fluent
@@ -89,6 +97,9 @@ func isNodeSliceType(expr ast.Expr, imports map[string]string, reg *Registry) bo
 	if sel.Sel.Name != "Node" && sel.Sel.Name != "Element" {
 		return false
 	}
-	_, found := chainPackage(sel, imports, reg)
-	return found
+	// Confirm the qualifier resolves to a package that actually exports that
+	// type, so []div.Node (the div package has no Node type) is not mistaken
+	// for a node slice.
+	pkg, found := chainPackage(sel, imports, reg)
+	return found && pkg.Types[sel.Sel.Name]
 }

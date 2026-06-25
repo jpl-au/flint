@@ -102,6 +102,9 @@ func testRegistry() *Registry {
 					"Node": true, "Element": true, "Dynamic": true,
 					"Attribute": true, "Memoiser": true,
 				},
+				TypeMethods: map[string]map[string]bool{
+					"Node": {"Render": true, "RenderBuilder": true, "Nodes": true},
+				},
 			},
 			"github.com/jpl-au/fluent-security": {
 				Functions: map[string]int{
@@ -112,6 +115,10 @@ func testRegistry() *Registry {
 				Methods: map[string]bool{
 					"Allow": true, "AllowAttr": true,
 					"AllowClasses": true, "Clean": true,
+				},
+				FuncReturns: map[string]string{
+					"HTML":      "github.com/jpl-au/fluent/node.Node",
+					"PlainText": "github.com/jpl-au/fluent/node.Node",
 				},
 			},
 			"github.com/jpl-au/fluent/html5/attr/inputtype": {

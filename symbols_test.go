@@ -257,6 +257,99 @@ func TestCheckSymbolsInvalidMethod(t *testing.T) {
 	}
 }
 
+// TestCheckSymbolsResolvesForeignReturn covers a method called on the result of
+// a function whose return type is recorded (security.PlainText returns a
+// node.Node, which has Render/Nodes). flint must follow the return type and
+// stay silent - no diagnostic at all.
+func TestCheckSymbolsResolvesForeignReturn(t *testing.T) {
+	l := New(testRegistry())
+	for _, body := range []string{
+		`_ = security.PlainText("x").Render()`,
+		`_ = security.HTML("x").Nodes()`,
+	} {
+		t.Run(body, func(t *testing.T) {
+			src := wrapWithImports([]string{"github.com/jpl-au/fluent-security"}, body)
+			diags, err := l.Source("test.go", src)
+			if err != nil {
+				t.Fatalf("unexpected parse error: %v", err)
+			}
+			for _, d := range diags {
+				if strings.Contains(d.Message, "method ") {
+					t.Errorf("unexpected method diagnostic: %s", d.Message)
+				}
+			}
+		})
+	}
+}
+
+// TestCheckSymbolsForeignReturnRejectsBadMethod checks that once the return
+// type is known, a method that genuinely is not on it is a firm error -
+// node.Node has no Frobnicate.
+func TestCheckSymbolsForeignReturnRejectsBadMethod(t *testing.T) {
+	l := New(testRegistry())
+	src := wrapWithImports([]string{"github.com/jpl-au/fluent-security"},
+		`_ = security.PlainText("x").Frobnicate()`)
+	diags, err := l.Source("test.go", src)
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+	var found bool
+	for _, d := range diags {
+		if strings.Contains(d.Message, "method Frobnicate") {
+			found = true
+			if d.Severity != Error {
+				t.Errorf("severity = %v, want Error (the return type is known)", d.Severity)
+			}
+			if !strings.Contains(d.Message, "node.Node") {
+				t.Errorf("message = %q, want it to name the resolved type", d.Message)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("expected a firm method diagnostic, got %d diagnostics", len(diags))
+	}
+}
+
+// TestCheckSymbolsHedgesUnresolved covers methods on a non-element package whose
+// receiver type flint cannot resolve - a function with no recorded return type
+// (security.New) or a deeper method chain (Cleaner.Clean itself returns a
+// node.Node, so the convention that methods return the element does not hold).
+// Both must hedge with a Warning rather than assert a hard error.
+func TestCheckSymbolsHedgesUnresolved(t *testing.T) {
+	l := New(testRegistry())
+	tests := []struct {
+		name string
+		body string
+	}{
+		{"unrecorded function return", `_ = security.New().Frobnicate()`},
+		{"deeper method chain", `_ = security.New().Allow("b").Frobnicate()`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			src := wrapWithImports([]string{"github.com/jpl-au/fluent-security"}, tt.body)
+			diags, err := l.Source("test.go", src)
+			if err != nil {
+				t.Fatalf("unexpected parse error: %v", err)
+			}
+			var found bool
+			for _, d := range diags {
+				if strings.Contains(d.Message, "method Frobnicate") {
+					found = true
+					if d.Severity != Warning {
+						t.Errorf("severity = %v, want Warning (unresolved receiver)", d.Severity)
+					}
+					if !strings.Contains(d.Fix, "false positive") {
+						t.Errorf("fix = %q, want it to flag the possible false positive", d.Fix)
+					}
+				}
+			}
+			if !found {
+				t.Fatalf("expected a hedged method diagnostic, got %d diagnostics", len(diags))
+			}
+		})
+	}
+}
+
 func TestCheckSymbolsAliasedImport(t *testing.T) {
 	l := New(testRegistry())
 

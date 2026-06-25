@@ -81,7 +81,6 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 			continue
 		}
 
-		class := classifyAppends(body, name)
 		// Only a sink that resolves to a Fluent package (div.New, ul.New, an
 		// inline div.New().Add, ...) is a constructor we can name. A plain
 		// function or a method on a local of unknown type does not resolve, so
@@ -92,7 +91,7 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 		if intoElement {
 			message = fmt.Sprintf("build the element's children with Fluent composition instead of accumulating %q with append", name)
 		}
-		fix := nodeAppendFix(class, intoElement)
+		fix := nodeAppendFix(sc.class, intoElement)
 		if makeWithLength(stmt) {
 			fix += fmt.Sprintf("; note: make([]node.Node, n) seeds %q with n nil entries before the appended children - use make([]node.Node, 0, n) to reserve capacity", name)
 		}

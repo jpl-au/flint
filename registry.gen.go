@@ -1117,17 +1117,19 @@ func FluentRegistry() *Registry {
 				Vars:      map[string]bool{"False": true, "True": true},
 			},
 			"github.com/jpl-au/fluent/node": {
-				Functions: map[string]int{"Condition": 1, "Func": 1, "Funcs": 1, "Map": 2, "Memoise": 2, "Unless": 2, "When": 2},
-				Types:     map[string]bool{"Attribute": true, "ConditionalBuilder": true, "Dynamic": true, "Element": true, "FuncsComponent": true, "FunctionComponent": true, "MemoisedNode": true, "Memoiser": true, "Node": true},
+				Functions:   map[string]int{"Condition": 1, "Func": 1, "Funcs": 1, "Map": 2, "Memoise": 2, "Unless": 2, "When": 2},
+				Types:       map[string]bool{"Attribute": true, "ConditionalBuilder": true, "Dynamic": true, "Element": true, "FuncsComponent": true, "FunctionComponent": true, "MemoisedNode": true, "Memoiser": true, "Node": true},
+				TypeMethods: map[string]map[string]bool{"Node": {"Nodes": true, "Render": true, "RenderBuilder": true}},
 			},
 			"github.com/jpl-au/fluent/text": {
 				Functions: map[string]int{"RawText": 1, "RawTextf": -1, "Static": 1, "Text": 1, "Textf": -1},
 				Types:     map[string]bool{"Node": true},
 			},
 			"github.com/jpl-au/fluent-security": {
-				Functions: map[string]int{"FromPolicy": 1, "HTML": 1, "New": 0, "Nonce": 0, "PlainText": 1, "RichText": 0},
-				Types:     map[string]bool{"Cleaner": true},
-				Methods:   map[string]bool{"Allow": true, "AllowAttr": true, "AllowClasses": true, "Clean": true},
+				Functions:   map[string]int{"FromPolicy": 1, "HTML": 1, "New": 0, "Nonce": 0, "PlainText": 1, "RichText": 0},
+				Types:       map[string]bool{"Cleaner": true},
+				Methods:     map[string]bool{"Allow": true, "AllowAttr": true, "AllowClasses": true, "Clean": true},
+				FuncReturns: map[string]string{"HTML": "github.com/jpl-au/fluent/node.Node", "PlainText": "github.com/jpl-au/fluent/node.Node"},
 			},
 		},
 	}

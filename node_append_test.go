@@ -58,6 +58,13 @@ _ = div.New(kids...)`,
 			wantIn: "n nil entries before the appended children",
 		},
 		{
+			name: "parenthesised constructor keeps the element wording",
+			body: `kids := []node.Node{}
+kids = append(kids, div.New())
+_ = (div.New)(kids...)`,
+			wantIn: "passing children directly to the constructor or via .Add(...)",
+		},
+		{
 			name: "non-fluent sink flagged with generic, non-element wording",
 			body: `kids := []node.Node{}
 kids = append(kids, div.New())
@@ -178,6 +185,20 @@ _ = kids`,
 			body: `xs := []mylib.Node{}
 xs = append(xs, mylib.New())
 _ = mylib.Box(xs...)`,
+		},
+		{
+			name:    "selector that is not a real exported type is not a node slice",
+			imports: []string{nodePkg, divPkg},
+			body: `kids := []div.Node{}
+kids = append(kids, div.New())
+_ = div.New(kids...)`,
+		},
+		{
+			name:    "append with no element is not growth",
+			imports: []string{nodePkg, divPkg},
+			body: `kids := []node.Node{}
+kids = append(kids)
+_ = div.New(kids...)`,
 		},
 	}
 

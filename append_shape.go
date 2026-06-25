@@ -20,7 +20,7 @@ func isAppendTo(s *ast.AssignStmt, name string) bool {
 		return false
 	}
 	fn, ok := call.Fun.(*ast.Ident)
-	if !ok || fn.Name != "append" || len(call.Args) < 1 {
+	if !ok || fn.Name != "append" || len(call.Args) < 2 {
 		return false
 	}
 	arg0, ok := call.Args[0].(*ast.Ident)
@@ -75,18 +75,6 @@ type appendClass struct {
 	branch bool // a switch/select that builds children by branching
 }
 
-// classifyAppends inspects the top-level statements that append to name and
-// records which Fluent composition idioms the fix should suggest.
-func classifyAppends(body *ast.BlockStmt, name string) appendClass {
-	var c appendClass
-	for _, stmt := range body.List {
-		if stmtHasAppendTo(stmt, name) {
-			c.classify(stmt, name)
-		}
-	}
-	return c
-}
-
 // classify records the idiom implied by a single appending statement, unwrapping
 // a labelled statement to the loop or switch it labels.
 func (c *appendClass) classify(stmt ast.Stmt, name string) {
@@ -98,6 +86,12 @@ func (c *appendClass) classify(stmt ast.Stmt, name string) {
 	case *ast.LabeledStmt:
 		c.classify(s.Stmt, name)
 	case *ast.IfStmt:
+		// An else-if branch that appends is guarded by its own condition, which
+		// When/Unless/Condition cannot express; suggest the general node.Funcs.
+		if elseIf, ok := s.Else.(*ast.IfStmt); ok && stmtHasAppendTo(elseIf, name) {
+			c.branch = true
+			return
+		}
 		switch ifKind(s, name) {
 		case condUnless:
 			c.unless = true

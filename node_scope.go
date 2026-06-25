@@ -16,6 +16,7 @@ type accumScan struct {
 	splat   *ast.CallExpr // the sole splat, when splats == 1
 	tooLate bool          // an append happens inside a defer/goroutine, after the spread
 	other   bool          // any other use: read elsewhere, mutated in a plain closure, indexed, re-sliced
+	class   appendClass   // the Fluent idioms the real (non-shadowed) appends call for
 }
 
 // scanAccumulator reads body for the accumulator named name (declared at
@@ -44,7 +45,10 @@ func scanAccumulator(body *ast.BlockStmt, name string, declIdent *ast.Ident) acc
 		ast.Inspect(expr, func(n ast.Node) bool {
 			switch x := n.(type) {
 			case *ast.FuncLit:
-				walkStmts(x.Body.List, shadowed || fieldsDeclareName(x.Type, name), true, false)
+				// A closure nested inside a defer/goroutine body still runs at
+				// defer/goroutine time, so an append in it is just as late;
+				// carry the inDeferGo context across the boundary.
+				walkStmts(x.Body.List, shadowed || fieldsDeclareName(x.Type, name), true, inDeferGo)
 				return false
 			case *ast.CallExpr:
 				if !shadowed && isSplat(x, name) {
@@ -70,7 +74,20 @@ func scanAccumulator(body *ast.BlockStmt, name string, declIdent *ast.Ident) acc
 	// walkCall handles a defer/go call: its arguments evaluate immediately, but a
 	// literal function body runs later (so appends to the slice there are too late).
 	walkCall = func(call *ast.CallExpr, shadowed, inClosure, deferGo bool) {
-		if fl, ok := call.Fun.(*ast.FuncLit); ok {
+		// A defer/go statement evaluates the callee and every argument
+		// immediately; only a function-literal body runs later. So a splat here
+		// is a real, synchronous spread - count it as a top-level call would
+		// (mirroring the *ast.CallExpr arm of walkExpr).
+		if !shadowed && isSplat(call, name) {
+			if inClosure {
+				s.other = true
+			} else {
+				s.splats++
+				s.splat = call
+				blessed[call.Args[len(call.Args)-1].(*ast.Ident)] = true
+			}
+		}
+		if fl, ok := unparen(call.Fun).(*ast.FuncLit); ok {
 			walkStmts(fl.Body.List, shadowed || fieldsDeclareName(fl.Type, name), true, deferGo)
 		} else {
 			walkExpr(call.Fun, shadowed, inClosure, false)
@@ -143,6 +160,11 @@ func scanAccumulator(body *ast.BlockStmt, name string, declIdent *ast.Ident) acc
 					blessed[id] = true
 					sh = true
 				}
+			} else {
+				// `for kids = range xs` overwrites the accumulator each
+				// iteration; that is a real use, not a shadowing redeclaration.
+				walkExpr(x.Key, shadowed, inClosure, inDeferGo)
+				walkExpr(x.Value, shadowed, inClosure, inDeferGo)
 			}
 			walkStmts(x.Body.List, sh, inClosure, inDeferGo)
 		case *ast.SwitchStmt:
@@ -158,7 +180,9 @@ func scanAccumulator(body *ast.BlockStmt, name string, declIdent *ast.Ident) acc
 				sh = walkMaybeRedecl(x.Init, sh, inClosure, inDeferGo)
 			}
 			if x.Assign != nil {
-				walkStmt(x.Assign, sh, inClosure, inDeferGo)
+				// `switch kids := v.(type)` binds kids in the switch's own
+				// scope, so it shadows the accumulator like any redeclaration.
+				sh = walkMaybeRedecl(x.Assign, sh, inClosure, inDeferGo)
 			}
 			walkStmts(x.Body.List, sh, inClosure, inDeferGo)
 		case *ast.CaseClause:
@@ -169,10 +193,13 @@ func scanAccumulator(body *ast.BlockStmt, name string, declIdent *ast.Ident) acc
 		case *ast.SelectStmt:
 			walkStmts(x.Body.List, shadowed, inClosure, inDeferGo)
 		case *ast.CommClause:
+			sh := shadowed
 			if x.Comm != nil {
-				walkStmt(x.Comm, shadowed, inClosure, inDeferGo)
+				// `case kids := <-ch:` binds kids in the clause's own scope, so
+				// it shadows the accumulator like any redeclaration.
+				sh = walkMaybeRedecl(x.Comm, sh, inClosure, inDeferGo)
 			}
-			walkStmts(x.Body, shadowed, inClosure, inDeferGo)
+			walkStmts(x.Body, sh, inClosure, inDeferGo)
 		case *ast.DeferStmt:
 			walkCall(x.Call, shadowed, inClosure, true)
 		case *ast.GoStmt:
@@ -217,7 +244,18 @@ func scanAccumulator(body *ast.BlockStmt, name string, declIdent *ast.Ident) acc
 		}
 	}
 
-	walkStmts(body.List, false, false, false)
+	// Walk the top level directly so each accumulating statement can be
+	// classified by its real (non-shadowed, non-closure) appends. A name-only
+	// scan would misread an append to a same-named variable in an inner scope
+	// and suggest an idiom (a loop, a branch) the real accumulator never uses.
+	sh := false
+	for _, stmt := range body.List {
+		before := s.appends
+		sh = walkMaybeRedecl(stmt, sh, false, false)
+		if s.appends > before {
+			s.class.classify(stmt, name)
+		}
+	}
 
 	for _, id := range uses {
 		if !blessed[id] {
