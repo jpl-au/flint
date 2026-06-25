@@ -107,12 +107,22 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 		}
 
 		class := classifyAppends(body, name)
+		// Only a sink that resolves to a Fluent package (div.New, ul.New, an
+		// inline div.New().Add, ...) is a constructor we can name. A plain
+		// function or a method on a local of unknown type does not resolve, so
+		// the advice drops the element-specific wording rather than inventing a
+		// constructor that is not there.
+		_, intoElement := chainPackage(splat.Fun, imports, l.registry)
+		message := fmt.Sprintf("compose these children with Fluent instead of accumulating %q with append", name)
+		if intoElement {
+			message = fmt.Sprintf("build the element's children with Fluent composition instead of accumulating %q with append", name)
+		}
 		diags = append(diags, Diagnostic{
 			Pos:      fset.Position(declIdent.Pos()),
 			End:      fset.Position(splat.End()),
 			Severity: Warning,
-			Message:  fmt.Sprintf("build the element's children with Fluent composition instead of accumulating %q with append", name),
-			Fix:      nodeAppendFix(class),
+			Message:  message,
+			Fix:      nodeAppendFix(class, intoElement),
 		})
 	}
 

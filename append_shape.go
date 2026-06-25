@@ -124,7 +124,7 @@ func isNegated(cond ast.Expr) bool {
 
 // nodeAppendFix builds the fix advice, naming only the idioms the code's shape
 // actually calls for.
-func nodeAppendFix(c appendClass) string {
+func nodeAppendFix(c appendClass, intoElement bool) string {
 	var options []string
 	if c.when {
 		options = append(options, "node.When(cond, child) for a conditional child")
@@ -141,6 +141,10 @@ func nodeAppendFix(c appendClass) string {
 	if c.branch {
 		options = append(options, "node.Funcs(func() []node.Node { ... }) for branching that builds a slice")
 	}
-	options = append(options, "passing children directly to the constructor or via .Add(...)")
+	if intoElement {
+		options = append(options, "passing children directly to the constructor or via .Add(...)")
+	} else {
+		options = append(options, "composing the children with Fluent rather than assembling a []node.Node by hand")
+	}
 	return "compose children with Fluent instead of a []node.Node grown by append: " + strings.Join(options, "; ")
 }

@@ -51,11 +51,11 @@ _ = div.New(kids...)`,
 			wantIn: "passing children directly",
 		},
 		{
-			name: "non-fluent sink still flagged when slice is node-typed",
+			name: "non-fluent sink flagged with generic, non-element wording",
 			body: `kids := []node.Node{}
 kids = append(kids, div.New())
 _ = render(kids...)`,
-			wantIn: "passing children directly",
+			wantIn: "composing the children with Fluent rather than assembling",
 		},
 		{
 			name: "negated if suggests Unless",
