@@ -36,6 +36,18 @@ func (l *Linter) checkTypedParams(fset *token.FileSet, file *ast.File) []Diagnos
 			return true
 		}
 
+		// On a multi-element package, only flag a typed-param when the method
+		// actually exists on the element the chain roots at. Otherwise symbols.go
+		// already reports the method as nonexistent, and a typed-constant hint for
+		// a method this element does not have would be misleading.
+		if _, fn, ok := chainRootFunc(sel.X, imports); ok {
+			if ret, known := pkg.FuncReturns[fn]; known {
+				if methods := l.registry.typeMethods(ret); methods != nil && !methods[methodName] {
+					return true
+				}
+			}
+		}
+
 		// Check if this method expects a typed parameter.
 		enumPkg, hasTyped := pkg.TypedParams[methodName]
 		if !hasTyped {

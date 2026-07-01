@@ -20,6 +20,7 @@ var InfoSections = map[string]string{
 	"attributes":         "attributes",
 	"attrs":              "attributes",
 	"vars":               "vars",
+	"elements":           "elements",
 }
 
 // Info writes the registry entry for the named element to w. The name
@@ -38,30 +39,88 @@ func (r *Registry) Info(w io.Writer, name string, sections ...string) error {
 		return err
 	}
 
-	suffix := "/" + name
-
 	var pkg Package
 	var importPath string
+	var label string
+	var children map[string]Package
 	var found bool
+
+	// An explicit pkg:element query (e.g. svg:rect) resolves an element within a
+	// named package. It reaches an element whose bare name is shadowed by a
+	// package (svg:text, versus the text node package) and reads consistently for
+	// every svg shape; bare names still resolve by the precedence below.
+	if pkgPart, elemPart, prefixed := strings.Cut(name, ":"); prefixed {
+		for path, p := range r.Packages {
+			if !strings.EqualFold(lastSegment(path), pkgPart) {
+				continue
+			}
+			for tag, el := range p.Elements {
+				if strings.EqualFold(tag, elemPart) {
+					pkg, importPath, label, found = el, path, tag, true
+					break
+				}
+			}
+			break
+		}
+		if !found {
+			return fmt.Errorf("unknown element %q", name)
+		}
+	}
+
+	// Resolution is case-insensitive so discovery does not hinge on a shape's
+	// exact casing (e.g. -info radialgradient resolves radialGradient); the header
+	// always shows the canonical name. Match by package name (the import path's
+	// last segment) first.
 	for path, p := range r.Packages {
-		if strings.HasSuffix(path, suffix) {
-			pkg = p
+		if strings.EqualFold(lastSegment(path), name) {
 			importPath = path
+			label = lastSegment(path)
+			pkg = p
+			// A multi-element package (svg) usually has a root element whose tag
+			// equals the package name; show that element's own surface so its
+			// specific methods appear, and list the children below.
+			children = p.Elements
+			for tag, el := range p.Elements {
+				if strings.EqualFold(tag, name) {
+					pkg = el
+					label = tag
+					break
+				}
+			}
 			found = true
 			break
 		}
 	}
 
-	// The queried name may be an HTML tag rather than a package name:
-	// tags that are Go keywords live in differently named packages
-	// (select in dropdown, main in primary, var in variable, map in
-	// imagemap).
+	// The queried name may be an HTML tag rather than a package name: tags that
+	// are Go keywords live in differently named packages (select in dropdown,
+	// main in primary, var in variable, map in imagemap).
 	if !found {
 		for path, p := range r.Packages {
-			if p.Tag == name {
+			if p.Tag != "" && strings.EqualFold(p.Tag, name) {
 				pkg = p
 				importPath = path
+				label = lastSegment(path)
 				found = true
+				break
+			}
+		}
+	}
+
+	// The queried name may be one element of a multi-element package, e.g. "rect"
+	// within the svg package, whose import path ends in /svg, not /rect.
+	if !found {
+		for path, p := range r.Packages {
+			for tag, el := range p.Elements {
+				if strings.EqualFold(tag, name) {
+					pkg = el
+					importPath = path
+					label = tag
+					found = true
+					break
+				}
+			}
+			if found {
 				break
 			}
 		}
@@ -72,11 +131,10 @@ func (r *Registry) Info(w io.Writer, name string, sections ...string) error {
 
 	pw := &prefixWriter{w: w}
 
-	pkgName := lastSegment(importPath)
-	if pkg.Tag != "" && pkg.Tag != pkgName {
-		pw.printf("Element: %s (renders <%s>; %q is a Go reserved word)\n", pkgName, pkg.Tag, pkg.Tag)
+	if pkg.Tag != "" && pkg.Tag != label {
+		pw.printf("Element: %s (renders <%s>; %q is a Go reserved word)\n", label, pkg.Tag, pkg.Tag)
 	} else {
-		pw.printf("Element: %s\n", pkgName)
+		pw.printf("Element: %s\n", label)
 	}
 	pw.printf("Import:  %s\n", importPath)
 
@@ -128,6 +186,13 @@ func (r *Registry) Info(w io.Writer, name string, sections ...string) error {
 		pw.printf("\nVars:\n")
 		for _, v := range sortedKeys(pkg.Vars) {
 			pw.printf("  %s\n", v)
+		}
+	}
+
+	if show("elements") && len(children) > 0 {
+		pw.printf("\nElements:\n")
+		for _, tag := range sortedKeys(children) {
+			pw.printf("  %s\n", tag)
 		}
 	}
 

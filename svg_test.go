@@ -1,0 +1,261 @@
+package flint
+
+import (
+	"bytes"
+	"strings"
+	"testing"
+)
+
+// svgImport is the single import path that hosts every svg element type.
+const svgImport = "github.com/jpl-au/fluent/html5/svg"
+
+// Enum packages referenced by the typed svg attributes.
+const (
+	gradientUnitsImport = "github.com/jpl-au/fluent/html5/attr/gradientunits"
+	textAnchorImport    = "github.com/jpl-au/fluent/html5/attr/textanchor"
+)
+
+// TestSVGValidChains checks that constructors and chained methods of the
+// multi-element svg package validate against the element each constructor
+// returns, including deep chains whose element-specific setters appear after
+// the first hop.
+func TestSVGValidChains(t *testing.T) {
+	l := New(FluentRegistry())
+
+	tests := []struct {
+		name    string
+		imports []string
+		body    string
+	}{
+		{name: "rect fill", body: `_ = svg.Rect().Fill("red")`},
+		{name: "rect deep chain", body: `_ = svg.Rect().X("0").Y("0").Width("40").Height("120").Fill("var(--blue)")`},
+		{name: "circle setters", body: `_ = svg.Circle().Cx("60").Cy("60").R("50")`},
+		{name: "group transform", body: `_ = svg.G(svg.Rect()).Transform("translate(10,10)")`},
+		{name: "stop offset", body: `_ = svg.Stop().Offset("0").StopColor("#fff")`},
+		{name: "root viewbox", body: `_ = svg.New().ViewBox("0 0 10 10")`},
+		{name: "linear gradient", imports: []string{gradientUnitsImport}, body: `_ = svg.LinearGradient(svg.Stop()).GradientUnits(gradientunits.UserSpaceOnUse)`},
+		{name: "raw shape", body: `_ = svg.Raw("<path/>")`},
+		{name: "text anchor", imports: []string{textAnchorImport}, body: `_ = svg.Text("hi").TextAnchor(textanchor.Middle)`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			src := wrapWithImports(append([]string{svgImport}, tt.imports...), tt.body)
+			diags, err := l.Source("test.go", src)
+			if err != nil {
+				t.Fatalf("unexpected parse error: %v", err)
+			}
+			// Filter to only symbol diagnostics (ignore Static/RawText checks).
+			var symbolDiags []Diagnostic
+			for _, d := range diags {
+				if d.Fix == "" {
+					continue
+				}
+				if !strings.Contains(d.Fix, "replace Static with Text") &&
+					!strings.Contains(d.Fix, "replace RawText with Text") {
+					symbolDiags = append(symbolDiags, d)
+				}
+			}
+			if len(symbolDiags) > 0 {
+				t.Errorf("got %d unexpected diagnostics", len(symbolDiags))
+				for _, d := range symbolDiags {
+					t.Logf("  %s: %s", d.Pos, d.Message)
+				}
+			}
+		})
+	}
+}
+
+// TestSVGInvalidMethods checks that a method valid on one svg element but not
+// on the one a chain roots at is flagged as an error. The resolution runs
+// through the root constructor, so svg.Stop().Width(...) is caught even though
+// Width is valid on svg.Rect().
+func TestSVGInvalidMethods(t *testing.T) {
+	l := New(FluentRegistry())
+
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "stop has no Width", body: `_ = svg.Stop().Width("1")`},
+		{name: "circle has no D", body: `_ = svg.Circle().D("M0,0")`},
+		{name: "rect has no Offset", body: `_ = svg.Rect().Offset("0")`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			src := wrapWithImports([]string{svgImport}, tt.body)
+			diags, err := l.Source("test.go", src)
+			if err != nil {
+				t.Fatalf("unexpected parse error: %v", err)
+			}
+			found := false
+			for _, d := range diags {
+				if d.Severity == Error && strings.Contains(d.Message, "does not exist") {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected an Error diagnostic, got:")
+				for _, d := range diags {
+					t.Logf("  %s: %s", d.Pos, d.Message)
+				}
+			}
+		})
+	}
+}
+
+// TestSVGEnumAttributes checks that the typed svg enum attributes flag a bare
+// string literal where a typed constant is expected. (The valid enum-value usage
+// is exercised in TestSVGValidChains.)
+func TestSVGEnumAttributes(t *testing.T) {
+	l := New(FluentRegistry())
+
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "text-anchor string literal", body: `_ = svg.Text("x").TextAnchor("middle")`},
+		{name: "stroke-linecap string literal", body: `_ = svg.Rect().StrokeLineCap("round")`},
+		{name: "gradient-units string literal", body: `_ = svg.LinearGradient().GradientUnits("userSpaceOnUse")`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			src := wrapWithImports([]string{svgImport}, tt.body)
+			diags, err := l.Source("test.go", src)
+			if err != nil {
+				t.Fatalf("unexpected parse error: %v", err)
+			}
+			found := false
+			for _, d := range diags {
+				if strings.Contains(d.Message, "typed constant") {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected a typed-constant diagnostic, got:")
+				for _, d := range diags {
+					t.Logf("  %s: %s", d.Pos, d.Message)
+				}
+			}
+		})
+	}
+}
+
+// TestSVGInfo checks that flint -info resolves an individual element of the
+// multi-element svg package and presents only that element's surface, while
+// the package itself lists its elements.
+func TestSVGInfo(t *testing.T) {
+	reg := FluentRegistry()
+
+	tests := []struct {
+		name    string
+		element string
+		want    []string // substrings that must appear
+		notWant []string // substrings that must not appear
+		wantErr string   // non-empty means Info should return an error containing this
+	}{
+		{
+			name:    "rect element resolves within svg",
+			element: "rect",
+			want: []string{
+				"Element: rect",
+				"Import:  " + svgImport,
+				// Match the standalone method line: every svg element carries a
+				// StrokeWidth method, so a bare "Width" substring is not specific
+				// to the Width setter that distinguishes rect from stop.
+				"  Width\n",
+				"Fill",
+			},
+			notWant: []string{"Offset"},
+		},
+		{
+			name:    "stop element resolves within svg",
+			element: "stop",
+			want: []string{
+				"Element: stop",
+				"Offset",
+			},
+			notWant: []string{"  Width\n"},
+		},
+		{
+			name:    "svg package lists its elements",
+			element: "svg",
+			want: []string{
+				"Element: svg",
+				"Elements:",
+				"rect",
+				"circle",
+				"stop",
+			},
+		},
+		{
+			name:    "linearGradient element resolves within svg",
+			element: "linearGradient",
+			want:    []string{"Element: linearGradient"},
+		},
+		{
+			name:    "svg:text prefix reaches the svg <text> element",
+			element: "svg:text",
+			want:    []string{"Element: text", "Import:  " + svgImport, "TextAnchor"},
+		},
+		{
+			name:    "svg:rect prefix reaches the rect shape",
+			element: "svg:rect",
+			want:    []string{"Element: rect", "  Width\n"},
+			notWant: []string{"Offset"},
+		},
+		{
+			name:    "bare text still resolves the text node package",
+			element: "text",
+			want:    []string{"Import:  github.com/jpl-au/fluent/text"},
+			notWant: []string{"TextAnchor"},
+		},
+		{
+			name:    "unknown shape returns error",
+			element: "nonexistent-shape",
+			wantErr: "unknown element",
+		},
+		{
+			name:    "unknown prefixed element returns error",
+			element: "svg:bogus",
+			wantErr: "unknown element",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			err := reg.Info(&buf, tt.element)
+
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Errorf("error %q does not contain %q", err, tt.wantErr)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			out := buf.String()
+			for _, s := range tt.want {
+				if !strings.Contains(out, s) {
+					t.Errorf("output missing %q", s)
+				}
+			}
+			for _, s := range tt.notWant {
+				if strings.Contains(out, s) {
+					t.Errorf("output unexpectedly contains %q", s)
+				}
+			}
+		})
+	}
+}

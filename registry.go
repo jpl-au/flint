@@ -12,7 +12,14 @@ type Registry struct {
 	Packages map[string]Package
 }
 
-// Package describes the exported symbols of a single Go package.
+// Package describes the exported symbols of a Go package. For the common case
+// of one element per package it describes that element directly. For a
+// multi-element package (the svg package, whose single import path hosts many
+// element types) the fields describe the shared surface - Functions lists
+// every constructor, Methods the methods common to every element, and
+// FuncReturns/TypeMethods resolve each constructor's element type for
+// chained-method validation - while Elements describes each element for
+// `flint -info`.
 type Package struct {
 	// Tag is the HTML tag an element package renders, e.g. "div" for
 	// the div package or "select" for the dropdown package. It differs
@@ -75,6 +82,14 @@ type Package struct {
 	// so the chained-method check can resolve them. For the node package:
 	// "Node" -> {Render, RenderBuilder, Nodes}.
 	TypeMethods map[string]map[string]bool
+
+	// Elements describes the individual elements of a multi-element package,
+	// keyed by HTML tag (e.g. "rect" for the svg package, whose single import
+	// path hosts many element types). It is nil for the common case of one
+	// element per package, where the fields above already describe that element.
+	// flint -info uses it to resolve and present a specific element within the
+	// package.
+	Elements map[string]Package
 }
 
 // typeMethods returns the method set of a path-qualified type, for example

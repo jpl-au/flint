@@ -56,7 +56,7 @@ import (
 func main() {
 	noRegistry := flag.Bool("no-registry", false, "Disable symbol validation")
 	includeTests := flag.Bool("include-tests", false, "Include _test.go files")
-	infoElement := flag.String("info", "", "Show registry info for an element (e.g. -info div)")
+	infoElement := flag.String("info", "", "Show registry info for an element (e.g. -info div, or -info svg:rect for a shape within a package)")
 	showVersion := flag.Bool("version", false, "Print flint version and exit")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: flint [flags] <pattern>...\n")

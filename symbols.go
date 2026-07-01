@@ -73,18 +73,18 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 			}
 
 			method := sel.Sel.Name
-			if pkg.Methods == nil || pkg.Methods[method] {
-				return true
-			}
-			if _, ok := pkg.Functions[method]; ok {
-				return true
-			}
 
-			// When the receiver is a direct package-function call whose return
-			// type is recorded, validate the method against that type exactly -
-			// security.PlainText returns a node.Node, so .Render() is valid and
-			// .Frobnicate() is a genuine error.
-			if alias, fn, ok := rootPackageFunc(sel.X, imports); ok {
+			// Authoritative per-type resolution first: follow the chain's root
+			// constructor to its recorded return type and validate the method
+			// against that type's method set. This covers foreign-return funcs
+			// (security.PlainText returns node.Node, so .Render() is valid and
+			// .Clean() is an error) and multi-element packages (svg.Rect() returns
+			// the rect type, svg.Raw() returns the Shape interface). It must run
+			// before the package-level Methods/Functions hedges below: those are
+			// broad supersets (every common svg method, every constructor name)
+			// that would otherwise mask a method genuinely absent from the
+			// concrete return type.
+			if alias, fn, ok := chainRootFunc(sel.X, imports); ok {
 				if ret, known := pkg.FuncReturns[fn]; known {
 					if methods := l.registry.typeMethods(ret); methods != nil {
 						if methods[method] {
@@ -101,14 +101,23 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 				}
 			}
 
-			// A non-element package groups functions and methods that may return
-			// foreign types - security.PlainText returns a node.Node, and the
-			// Cleaner's own Clean method does too. flint has no return-type
-			// information beyond what FuncReturns records, so the receiver's type
-			// here is a guess: hedge with a warning rather than assert a hard
-			// error. Element packages keep the firm error - their constructors
-			// and methods return the element by construction, so the registered
-			// method set is authoritative.
+			// Fallback for packages without per-constructor return-type data (e.g.
+			// html5 elements): accept any method in the element's flat method set,
+			// or any package constructor name.
+			if pkg.Methods == nil || pkg.Methods[method] {
+				return true
+			}
+			if _, ok := pkg.Functions[method]; ok {
+				return true
+			}
+
+			// We reach here only when the root constructor's return type is not
+			// recorded (no FuncReturns entry) and the method is in neither the
+			// package's flat method set nor its function set. For an element
+			// package the registered method set is authoritative, so this is a
+			// firm error. For a non-element package (e.g. a chain off
+			// security.New(), whose return type flint does not record) the
+			// receiver's type is a guess, so hedge with a warning.
 			isElementPkg := pkg.Types["Element"] || pkg.Tag != ""
 			if !isElementPkg {
 				d := Diagnostic{
@@ -162,6 +171,32 @@ func rootPackageFunc(expr ast.Expr, imports map[string]string) (string, string, 
 		return "", "", false
 	}
 	return id.Name, sel.Sel.Name, true
+}
+
+// chainRootFunc walks leftward to the root of a call/selector chain and reports
+// the package alias and the root constructor function name. For example, in
+// svg.Rect().Fill().X() it returns ("svg", "Rect", true). Unlike rootPackageFunc
+// it descends through any depth of method calls, so it resolves the originating
+// constructor of a deep chain. ok is false if the chain does not root at a
+// package-qualified call.
+func chainRootFunc(expr ast.Expr, imports map[string]string) (string, string, bool) {
+	switch e := expr.(type) {
+	case *ast.CallExpr:
+		if sel, ok := e.Fun.(*ast.SelectorExpr); ok {
+			if id, ok := sel.X.(*ast.Ident); ok {
+				if _, isPkg := imports[id.Name]; isPkg {
+					return id.Name, sel.Sel.Name, true
+				}
+			}
+			return chainRootFunc(sel.X, imports)
+		}
+		return chainRootFunc(e.Fun, imports)
+	case *ast.SelectorExpr:
+		return chainRootFunc(e.X, imports)
+	case *ast.ParenExpr:
+		return chainRootFunc(e.X, imports)
+	}
+	return "", "", false
 }
 
 // shortType renders a path-qualified type as pkg.Type for diagnostics, e.g.
