@@ -178,6 +178,23 @@ type resolves to a Fluent node, is grown by at least one `append`, is passed int
 exactly one call with `...`, and is used nowhere else (not indexed, returned, or
 passed without `...`). Slices that escape those bounds are left alone.
 
+### Buffer hint for large static content (advisory)
+
+When a Fluent element already holds at least 4 KiB of static content, flint shows
+an **info** suggesting you chain `.BufferHint(n)` on it. Above that size the render
+buffer comes from a shared pool, and a hint lets fluent reuse the buffer between
+renders instead of growing a new one each time. It is a suggestion only - the hint
+is optional and setting it cannot break anything, so the size gate keeps it quiet
+on all but genuinely large trees.
+
+```go
+// info: this element renders at least 4196 bytes of static content
+div.Static(trustedLongString)   // chain .BufferHint(4196)
+```
+
+The size is a lower bound: flint counts only the string literals it can see, so
+the real render is always at least that large.
+
 ## Library usage
 
 Flint can be used as a library for custom tooling or editor integrations.

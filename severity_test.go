@@ -133,6 +133,15 @@ _ = div.New(rows...)`,
 			wantMsg:      "Fluent can compose these children directly",
 			wantSeverity: Info,
 		},
+		{
+			name: "checkBufferHint large static content is advisory",
+			src: wrapWithImports(
+				[]string{"github.com/jpl-au/fluent/html5/div"},
+				`_ = div.Static("`+strings.Repeat("x", 5000)+`")`,
+			),
+			wantMsg:      "bytes of static content",
+			wantSeverity: Info,
+		},
 	}
 
 	for _, tt := range tests {
