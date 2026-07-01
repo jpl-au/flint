@@ -65,8 +65,8 @@ Each diagnostic carries a severity:
 - **warning** - code that compiles but carries a real reason to change: a
   security or correctness hazard, a silent bug, a duplicate attribute, or a
   typed API sidestepped. Reported, but does not fail the run.
-- **info** - advisory. The code is correct and fine as written; an optional,
-  idiomatic alternative exists. Reported, never fails the run.
+- **info** - advisory. The code is correct and fine as written; an optional
+  alternative exists. Reported, never fails the run.
 
 ## What it checks
 
@@ -147,31 +147,36 @@ import "github.com/jpl-au/fluent/html5/select"  // flagged: use "dropdown" inste
 import "github.com/jpl-au/fluent/html5/main"     // flagged: use "primary" instead
 ```
 
-### Children built with append
+### Children built with append (advisory)
 
-A local `[]node.Node` that is grown with `append` and then splatted into a Fluent call is flagged: Fluent composes children directly, so the intermediate slice is redundant. The fix names the right idiom for the shape it sees - `node.When`/`node.Unless` for a conditional child, `node.Map` for a loop, and variadic children or `.Add(...)` for the plain case.
+A local `[]node.Node` grown with `append` and then passed into a Fluent call with
+`...` is reported at **info**. Building the slice and passing it in is correct and,
+for render-once output, the cheapest option - so this is an advisory: Fluent can
+compose the children directly if you prefer. The fix names the helper for the shape
+it sees - `node.When`/`node.Unless` for a conditional child, `node.Map`/`node.Funcs`
+for a loop, variadic children or `.Add(...)` for the plain case.
 
 ```go
-// flagged
+// info: optional - Fluent can compose these directly
 kids := []node.Node{}
 if isAdmin { kids = append(kids, span.Text("admin")) }
 return div.New(kids...)
 
-// the idiom
+// the shorter form
 return div.New(node.When(isAdmin, span.Text("admin")))
 ```
 
-```go
-// flagged
-rows := make([]node.Node, 0, len(items))
-for _, it := range items { rows = append(rows, row(it)) }
-return ul.New(rows...)
+Two shapes are genuine problems and stay at **warning**:
 
-// the idiom
-return ul.New(node.Map(items, row))
-```
+- **Appending in a `defer` or goroutine** after the slice has been passed in -
+  those children run too late and never render.
+- **`make([]node.Node, n)`** with a non-zero length, then `append` - it seeds `n`
+  nil entries and doubles the slice; almost always a slip for `make([]node.Node, 0, n)`.
 
-The check is conservative: it fires only when the slice is a local whose element type resolves to a Fluent node, is grown by at least one append, is consumed by exactly one splat, and is used nowhere else (not indexed, returned, or passed un-splatted). Slices that escape those bounds are left alone.
+The check is conservative: it fires only when the slice is a local whose element
+type resolves to a Fluent node, is grown by at least one `append`, is passed into
+exactly one call with `...`, and is used nowhere else (not indexed, returned, or
+passed without `...`). Slices that escape those bounds are left alone.
 
 ## Library usage
 

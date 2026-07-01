@@ -87,19 +87,35 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 		// the advice drops the element-specific wording rather than inventing a
 		// constructor that is not there.
 		_, intoElement := chainPackage(sc.splat.Fun, imports, l.registry)
-		message := fmt.Sprintf("compose these children with Fluent instead of accumulating %q with append", name)
-		if intoElement {
-			message = fmt.Sprintf("build the element's children with Fluent composition instead of accumulating %q with append", name)
-		}
 		fix := nodeAppendFix(sc.class, intoElement)
+
+		// make([]node.Node, n) with a non-zero length seeds n nil entries and then
+		// doubles the slice on append - a genuine slip, so keep it a Warning with
+		// the note. Otherwise the accumulator is correct: building it and splatting
+		// is the cheapest render-once option, and composing with Fluent is an
+		// idiomatic alternative rather than a fix. Report that as advisory (Info),
+		// not a defect.
 		if makeWithLength(stmt) {
 			fix += fmt.Sprintf("; note: make([]node.Node, n) seeds %q with n nil entries before the appended children - use make([]node.Node, 0, n) to reserve capacity", name)
+			message := fmt.Sprintf("compose these children with Fluent instead of accumulating %q with append", name)
+			if intoElement {
+				message = fmt.Sprintf("build the element's children with Fluent composition instead of accumulating %q with append", name)
+			}
+			diags = append(diags, Diagnostic{
+				Pos:      fset.Position(declIdent.Pos()),
+				End:      fset.Position(sc.splat.End()),
+				Severity: Warning,
+				Message:  message,
+				Fix:      fix,
+			})
+			continue
 		}
+
 		diags = append(diags, Diagnostic{
 			Pos:      fset.Position(declIdent.Pos()),
 			End:      fset.Position(sc.splat.End()),
-			Severity: Warning,
-			Message:  message,
+			Severity: Info,
+			Message:  fmt.Sprintf("%q is assembled with append; Fluent can compose these children directly", name),
 			Fix:      fix,
 		})
 	}

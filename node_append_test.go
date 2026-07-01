@@ -14,9 +14,10 @@ func TestCheckNodeAppendPositive(t *testing.T) {
 	l := New(FluentRegistry())
 
 	tests := []struct {
-		name   string
-		body   string
-		wantIn string // substring expected in the Fix
+		name        string
+		body        string
+		wantIn      string // substring expected in the Fix
+		wantWarning bool   // the nil-seeding slip is a Warning; plain composition is advisory Info
 	}{
 		{
 			name: "conditional append suggests When",
@@ -55,7 +56,8 @@ _ = div.New(kids...)`,
 			body: `kids := make([]node.Node, 3)
 kids = append(kids, div.New())
 _ = div.New(kids...)`,
-			wantIn: "n nil entries before the appended children",
+			wantIn:      "n nil entries before the appended children",
+			wantWarning: true,
 		},
 		{
 			name: "parenthesised constructor keeps the element wording",
@@ -111,6 +113,28 @@ case 1:
 _ = div.New(kids...)`,
 			wantIn: "node.Funcs(func() []node.Node { ... })",
 		},
+		{
+			name: "loop that also seeds nil entries stays a warning",
+			body: `rows := make([]node.Node, 2)
+for _, it := range items {
+	rows = append(rows, div.Text(it))
+}
+_ = div.New(rows...)`,
+			wantIn:      "n nil entries before the appended children",
+			wantWarning: true,
+		},
+		{
+			name: "loop plus conditional is still advisory composition",
+			body: `rows := []node.Node{}
+for _, it := range items {
+	rows = append(rows, div.Text(it))
+}
+if cond {
+	rows = append(rows, div.New())
+}
+_ = div.New(rows...)`,
+			wantIn: "node.When(cond, child)",
+		},
 	}
 
 	for _, tt := range tests {
@@ -124,8 +148,12 @@ _ = div.New(kids...)`,
 			if !ok {
 				t.Fatalf("expected a node-append diagnostic; got %d diagnostics", len(diags))
 			}
-			if d.Severity != Warning {
-				t.Errorf("severity = %v, want Warning", d.Severity)
+			wantSev := Info
+			if tt.wantWarning {
+				wantSev = Warning
+			}
+			if d.Severity != wantSev {
+				t.Errorf("severity = %v, want %v", d.Severity, wantSev)
 			}
 			if !strings.Contains(d.Fix, tt.wantIn) {
 				t.Errorf("Fix = %q, want it to contain %q", d.Fix, tt.wantIn)
@@ -230,6 +258,33 @@ _ = div.New(kids...)`
 	}
 	if d, ok := findNodeAppend(diags); ok {
 		t.Errorf("unexpected diagnostic without registry: %s", d.Message)
+	}
+}
+
+// TestNodeAppendLoopIsAdvisory locks that a plain gathering loop is advisory
+// (info), not a defect: building the slice and splatting it is the cheapest
+// render-once option, so flint should inform, not warn.
+func TestNodeAppendLoopIsAdvisory(t *testing.T) {
+	l := New(FluentRegistry())
+	body := `rows := make([]node.Node, 0, 4)
+for _, it := range items {
+	rows = append(rows, div.Text(it))
+}
+_ = div.New(rows...)`
+	src := wrapWithImports([]string{nodePkg, divPkg}, body)
+	diags, err := l.Source("test.go", src)
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+	d, ok := findNodeAppend(diags)
+	if !ok {
+		t.Fatal("expected a node-append diagnostic")
+	}
+	if d.Severity != Info {
+		t.Errorf("severity = %v, want Info", d.Severity)
+	}
+	if !strings.Contains(d.Message, "Fluent can compose these children directly") {
+		t.Errorf("message = %q, want advisory phrasing", d.Message)
 	}
 }
 

@@ -117,6 +117,22 @@ func TestSeverity(t *testing.T) {
 			wantMsg:      "use div.Text(...) directly",
 			wantSeverity: Info,
 		},
+		{
+			name: "checkNodeAppend composition is advisory",
+			src: wrapWithImports(
+				[]string{
+					"github.com/jpl-au/fluent/node",
+					"github.com/jpl-au/fluent/html5/div",
+				},
+				`rows := make([]node.Node, 0, 2)
+for _, it := range items {
+	rows = append(rows, div.Text(it))
+}
+_ = div.New(rows...)`,
+			),
+			wantMsg:      "Fluent can compose these children directly",
+			wantSeverity: Info,
+		},
 	}
 
 	for _, tt := range tests {
