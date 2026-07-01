@@ -228,6 +228,29 @@ _ = div.New(kids...)`,
 kids = append(kids)
 _ = div.New(kids...)`,
 		},
+		{
+			// The node.Funcs idiom itself: accumulate into a slice and return it.
+			// There is no splat into a Fluent call, so the rule must stay silent -
+			// flagging this would flag node.Funcs's own documented usage.
+			name:    "accumulate-then-return is the node.Funcs idiom and is left alone",
+			imports: []string{nodePkg, divPkg},
+			body: `_ = node.Funcs(func() []node.Node {
+	out := []node.Node{}
+	for _, x := range xs {
+		out = append(out, div.New())
+	}
+	return out
+})`,
+		},
+		{
+			// The slice comes from a function call, not a make/composite literal,
+			// so its contents are unknown - the rule only handles slices it can see
+			// being built, and must leave this alone.
+			name:    "slice from a function call is left alone",
+			imports: []string{nodePkg, divPkg},
+			body: `kids := makeKids()
+_ = div.New(kids...)`,
+		},
 	}
 
 	for _, tt := range tests {
