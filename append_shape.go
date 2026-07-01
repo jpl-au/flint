@@ -68,19 +68,24 @@ const (
 // appendClass records the control-flow shapes that wrap the appends to an
 // accumulator, so the fix can name the Fluent idiom matching each one.
 type appendClass struct {
-	when   bool // a plain conditional child: if cond { append }
-	unless bool // a negated or else-only conditional child
-	both   bool // an if/else that appends in both branches
-	loop   bool // a for/range loop
-	branch bool // a switch/select that builds children by branching
+	when      bool // a plain conditional child: if cond { append }
+	unless    bool // a negated or else-only conditional child
+	both      bool // an if/else that appends in both branches
+	loop      bool // a for or range loop
+	rangeLoop bool // the loop ranges a value, so a slice may exist for node.Map
+	branch    bool // a switch/select that builds children by branching
 }
 
 // classify records the idiom implied by a single appending statement, unwrapping
 // a labelled statement to the loop or switch it labels.
 func (c *appendClass) classify(stmt ast.Stmt, name string) {
 	switch s := stmt.(type) {
-	case *ast.ForStmt, *ast.RangeStmt:
+	case *ast.ForStmt:
+		// A bare counting loop has no slice, so node.Map cannot apply.
 		c.loop = true
+	case *ast.RangeStmt:
+		c.loop = true
+		c.rangeLoop = true
 	case *ast.SwitchStmt, *ast.TypeSwitchStmt, *ast.SelectStmt:
 		c.branch = true
 	case *ast.LabeledStmt:
@@ -145,7 +150,12 @@ func nodeAppendFix(c appendClass, intoElement bool) string {
 		options = append(options, "node.Condition(cond).True(child).False(child) for an if/else")
 	}
 	if c.loop {
-		options = append(options, "node.Funcs(func() []node.Node { ... }) to build the children yourself, or node.Map(slice, fn) for a per-element slice mapping (Go generics)")
+		if c.rangeLoop {
+			options = append(options, "node.Funcs(func() []node.Node { ... }) to build the children yourself, or node.Map(slice, fn) for a per-element slice mapping (Go generics)")
+		} else {
+			// No range means no slice to map over, so node.Map cannot express it.
+			options = append(options, "node.Funcs(func() []node.Node { ... }) to build the children yourself")
+		}
 	}
 	if c.branch {
 		options = append(options, "node.Funcs(func() []node.Node { ... }) for branching that builds a slice")

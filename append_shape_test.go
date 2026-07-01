@@ -33,6 +33,33 @@ _ = div.New(kids...)`
 	}
 }
 
+// TestNodeAppendIndexLoopSuggestsFuncs checks that a bare counting loop (no
+// range, so no slice) is steered to node.Funcs and never to node.Map -
+// node.Map(slice, fn) needs a slice the loop does not have.
+func TestNodeAppendIndexLoopSuggestsFuncs(t *testing.T) {
+	l := New(FluentRegistry())
+	body := `rows := make([]node.Node, 0, 4)
+for i := 0; i < n; i++ {
+	rows = append(rows, div.Text("row"))
+}
+_ = div.New(rows...)`
+	src := wrapWithImports([]string{nodePkg, divPkg}, body)
+	diags, err := l.Source("test.go", src)
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+	d, ok := findNodeAppend(diags)
+	if !ok {
+		t.Fatal("expected a node-append diagnostic")
+	}
+	if !strings.Contains(d.Fix, "node.Funcs") {
+		t.Errorf("Fix should suggest node.Funcs for an index loop: %q", d.Fix)
+	}
+	if strings.Contains(d.Fix, "node.Map") {
+		t.Errorf("Fix must not suggest node.Map for an index loop with no slice: %q", d.Fix)
+	}
+}
+
 // TestNodeAppendElseIfSuggestsFuncs checks that an else-if chain, whose branch
 // is guarded by its own condition, is steered to node.Funcs rather than
 // node.Unless/node.Condition, which cannot express the extra condition.
