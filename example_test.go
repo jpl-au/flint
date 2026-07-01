@@ -59,5 +59,5 @@ func render(name string) {
 	// line 24: warning: RawText() first argument must be a string literal; got variable "name"
 	// line 25: warning: .Type() expects a typed constant, not a string literal "email"
 	// line 26: error: SetAttribute does not return the element; cannot chain .ID() after it
-	// line 27: warning: use div.Text(...) directly instead of div.New().Text(...)
+	// line 27: info: use div.Text(...) directly instead of div.New().Text(...)
 }

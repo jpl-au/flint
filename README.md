@@ -54,7 +54,19 @@ flint -info ol typed            # Typed constructors only
 | `-no-registry` | Disable symbol validation (only run Static/RawText checks) |
 | `-info <element> [section]...` | Show registry info for an element and exit |
 
-Exit codes: `0` clean, `1` diagnostics found, `2` usage or I/O error.
+Exit codes: `0` clean or advisory-only, `1` errors found, `2` usage or I/O error.
+
+### Severity levels
+
+Each diagnostic carries a severity:
+
+- **error** - incorrect code that will not compile (a missing symbol, wrong
+  arity, a chain that cannot compile). Sets exit code `1`.
+- **warning** - code that compiles but carries a real reason to change: a
+  security or correctness hazard, a silent bug, a duplicate attribute, or a
+  typed API sidestepped. Reported, but does not fail the run.
+- **info** - advisory. The code is correct and fine as written; an optional,
+  idiomatic alternative exists. Reported, never fails the run.
 
 ## What it checks
 
@@ -97,12 +109,14 @@ Function and method calls are checked against their expected argument counts.
 meta.UTF8("extra")       // flagged: UTF8 takes 0 arguments, got 1
 ```
 
-### Constructor optimisation
+### Constructor optimisation (advisory)
 
-The `New().Method()` pattern is flagged when a direct constructor exists for that method.
+The `New().Method()` pattern is flagged at **info** when a direct constructor
+exists for that method. Both forms are equivalent in behaviour and cost, so this
+is a readability suggestion, not a fix.
 
 ```go
-div.New().Text("hello")  // flagged: use div.Text("hello") directly
+div.New().Text("hello")  // info: use div.Text("hello") directly
 ```
 
 ### Typed constructor suggestions

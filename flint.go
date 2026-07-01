@@ -26,9 +26,14 @@ const (
 	// wrong arity, or a chain that will not compile.
 	Error Severity = iota
 
-	// Warning indicates code that works but could be improved:
-	// an idiomatic alternative exists, or the pattern carries risk.
+	// Warning indicates code that compiles and runs but carries a real
+	// reason to change: a security or correctness hazard, a silent bug,
+	// a duplicate attribute, or a typed API sidestepped.
 	Warning
+
+	// Info is advisory: the code is correct and fine as written, and an
+	// optional, idiomatic alternative exists. It never fails the run.
+	Info
 )
 
 // String returns the lowercase name of the severity level.
@@ -36,6 +41,8 @@ func (s Severity) String() string {
 	switch s {
 	case Warning:
 		return "warning"
+	case Info:
+		return "info"
 	default:
 		return "error"
 	}

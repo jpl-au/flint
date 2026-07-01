@@ -253,11 +253,14 @@ func check(l *flint.Linter, filename string, src []byte) (int, int, error) {
 		if d.Fix != "" {
 			fmt.Printf("  fix: %s\n", d.Fix)
 		}
-		if d.Severity == flint.Warning {
+		switch d.Severity {
+		case flint.Warning:
 			warnings++
-		} else {
+		case flint.Error:
 			errors++
 		}
+		// flint.Info is advisory: printed above, but intentionally uncounted
+		// so it never contributes to the summary or a non-zero exit.
 	}
 
 	return errors, warnings, nil

@@ -6,8 +6,9 @@ import (
 )
 
 // TestSeverity verifies that every check type assigns the correct severity
-// level. Warnings indicate improvable but functional code; errors indicate
-// code that is incorrect or will not compile.
+// level. Errors indicate code that is incorrect or will not compile; warnings
+// indicate working code that carries a real reason to change; info is advisory,
+// for correct code where an optional idiomatic alternative exists.
 func TestSeverity(t *testing.T) {
 	l := New(FluentRegistry())
 
@@ -46,15 +47,6 @@ func TestSeverity(t *testing.T) {
 				`_ = input.New().Type("email")`,
 			),
 			wantMsg:      ".Type() expects a typed constant",
-			wantSeverity: Warning,
-		},
-		{
-			name: "checkConstructors shorthand available",
-			src: wrapWithImports(
-				[]string{"github.com/jpl-au/fluent/html5/div"},
-				`_ = div.New().Text("hello")`,
-			),
-			wantMsg:      "use div.Text(...) directly",
 			wantSeverity: Warning,
 		},
 		{
@@ -113,6 +105,18 @@ func TestSeverity(t *testing.T) {
 			wantMsg:      "SetAttribute does not return the element",
 			wantSeverity: Error,
 		},
+
+		// Advisory (info): the code is correct; an optional, idiomatic
+		// alternative exists.
+		{
+			name: "checkConstructors shorthand is advisory",
+			src: wrapWithImports(
+				[]string{"github.com/jpl-au/fluent/html5/div"},
+				`_ = div.New().Text("hello")`,
+			),
+			wantMsg:      "use div.Text(...) directly",
+			wantSeverity: Info,
+		},
 	}
 
 	for _, tt := range tests {
@@ -142,5 +146,15 @@ func TestSeverity(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestSeverityString locks the lowercase names each severity reports, including
+// the advisory info tier.
+func TestSeverityString(t *testing.T) {
+	for sev, want := range map[Severity]string{Error: "error", Warning: "warning", Info: "info"} {
+		if got := sev.String(); got != want {
+			t.Errorf("Severity(%d).String() = %q, want %q", int(sev), got, want)
+		}
 	}
 }
