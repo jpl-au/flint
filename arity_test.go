@@ -178,6 +178,17 @@ func TestCheckMethodArity(t *testing.T) {
 			want:    ".Dynamic() expects 1 argument(s), got 0",
 		},
 		{
+			name:    "BufferHint takes exactly one hint",
+			imports: []string{"github.com/jpl-au/fluent/html5/div"},
+			body:    `_ = div.New().BufferHint()`,
+			want:    ".BufferHint() expects 1 argument(s), got 0",
+		},
+		{
+			name:    "chained BufferHint with one hint is valid",
+			imports: []string{"github.com/jpl-au/fluent/html5/div"},
+			body:    `_ = div.New().BufferHint(4096).Class("doc")`,
+		},
+		{
 			name:    "unresolvable local receiver is not checked",
 			imports: []string{"github.com/jpl-au/fluent/html5/div"},
 			body:    `_ = div.New(); d := makeThing(); d.Class()`,

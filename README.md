@@ -211,17 +211,15 @@ passed without `...`). Slices that escape those bounds are left alone.
 ### Buffer hint for large static content (advisory)
 
 When a Fluent element already holds at least 4 KiB of static content, flint shows
-an **info** suggesting you call `BufferHint(n)` on it before rendering. Above that
-size the render buffer comes from a shared pool, and a hint lets fluent reuse the
-buffer between renders instead of growing a new one each time. It is a suggestion
-only - the hint is optional and setting it cannot break anything, so the size gate
-keeps it quiet on all but genuinely large trees. Note that `BufferHint` returns
-the hint (an int), not the element, so it goes last or on a stored element.
+an **info** suggesting you chain `.BufferHint(n)` on it. Above that size the render
+buffer comes from a shared pool, and a hint lets fluent reuse the buffer between
+renders instead of growing a new one each time. It is a suggestion only - the hint
+is optional and setting it cannot break anything, so the size gate keeps it quiet
+on all but genuinely large trees.
 
 ```go
 // info: this element renders at least 5120 bytes of static content
-d := div.Static(`...five KiB of markup as a literal...`)
-d.BufferHint(5120)
+div.Static(`...five KiB of markup as a literal...`).BufferHint(5120)
 ```
 
 The size is an estimate from the string literals flint can see: dynamic content
