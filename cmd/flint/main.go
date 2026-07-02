@@ -194,10 +194,12 @@ func findGoFiles(root string, recursive, includeTests bool) ([]string, error) {
 			return err
 		}
 
-		// Skip hidden directories and testdata.
+		// Skip hidden directories and testdata - but never the walk root
+		// itself, whose name may legitimately start with a dot (".." as a
+		// pattern, or an explicitly named hidden directory).
 		if d.IsDir() {
 			name := d.Name()
-			if (name != "." && strings.HasPrefix(name, ".")) || name == "testdata" || name == "vendor" {
+			if path != root && (strings.HasPrefix(name, ".") || name == "testdata" || name == "vendor") {
 				return filepath.SkipDir
 			}
 			// If not recursive, skip subdirectories.
