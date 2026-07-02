@@ -12,7 +12,7 @@
 package flint
 
 import (
-	"bytes"
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"sort"
@@ -82,14 +82,18 @@ func New(r *Registry) *Linter {
 // An error is returned only if the source cannot be parsed. Lint
 // diagnostics are returned in the slice, not as errors.
 func (l *Linter) Source(filename string, src []byte) ([]Diagnostic, error) {
-	if bytes.Contains(src, []byte("// Code generated")) && bytes.Contains(src, []byte("DO NOT EDIT")) {
-		return nil, nil
-	}
-
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, filename, src, parser.AllErrors)
+	file, err := parser.ParseFile(fset, filename, src, parser.AllErrors|parser.ParseComments)
 	if err != nil {
 		return nil, err
+	}
+
+	// Generated files are skipped by the standard marker convention: a
+	// "// Code generated ... DO NOT EDIT." comment line before the package
+	// clause. A file that merely mentions the marker text (in a string
+	// literal, say) is still linted.
+	if ast.IsGenerated(file) {
+		return nil, nil
 	}
 
 	var diags []Diagnostic
@@ -105,6 +109,7 @@ func (l *Linter) Source(filename string, src []byte) ([]Diagnostic, error) {
 	diags = append(diags, l.checkArity(fset, file)...)
 	diags = append(diags, l.checkNodeAppend(fset, file)...)
 	diags = append(diags, l.checkBufferHint(fset, file)...)
+	diags = append(diags, l.checkShadows(fset, file)...)
 
 	sort.Slice(diags, func(i, j int) bool {
 		if diags[i].Pos.Line != diags[j].Pos.Line {
