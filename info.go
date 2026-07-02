@@ -45,12 +45,18 @@ func (r *Registry) Info(w io.Writer, name string, sections ...string) error {
 	var children map[string]Package
 	var found bool
 
+	// Iterate import paths in sorted order so a name that could match more
+	// than one package resolves the same way every run; map order would make
+	// the answer arbitrary.
+	paths := sortedKeys(r.Packages)
+
 	// An explicit pkg:element query (e.g. svg:rect) resolves an element within a
 	// named package. It reaches an element whose bare name is shadowed by a
 	// package (svg:text, versus the text node package) and reads consistently for
 	// every svg shape; bare names still resolve by the precedence below.
 	if pkgPart, elemPart, prefixed := strings.Cut(name, ":"); prefixed {
-		for path, p := range r.Packages {
+		for _, path := range paths {
+			p := r.Packages[path]
 			if !strings.EqualFold(lastSegment(path), pkgPart) {
 				continue
 			}
@@ -71,7 +77,8 @@ func (r *Registry) Info(w io.Writer, name string, sections ...string) error {
 	// exact casing (e.g. -info radialgradient resolves radialGradient); the header
 	// always shows the canonical name. Match by package name (the import path's
 	// last segment) first.
-	for path, p := range r.Packages {
+	for _, path := range paths {
+		p := r.Packages[path]
 		if strings.EqualFold(lastSegment(path), name) {
 			importPath = path
 			label = lastSegment(path)
@@ -96,7 +103,8 @@ func (r *Registry) Info(w io.Writer, name string, sections ...string) error {
 	// are Go keywords live in differently named packages (select in dropdown,
 	// main in primary, var in variable, map in imagemap).
 	if !found {
-		for path, p := range r.Packages {
+		for _, path := range paths {
+			p := r.Packages[path]
 			if p.Tag != "" && strings.EqualFold(p.Tag, name) {
 				pkg = p
 				importPath = path
@@ -110,7 +118,8 @@ func (r *Registry) Info(w io.Writer, name string, sections ...string) error {
 	// The queried name may be one element of a multi-element package, e.g. "rect"
 	// within the svg package, whose import path ends in /svg, not /rect.
 	if !found {
-		for path, p := range r.Packages {
+		for _, path := range paths {
+			p := r.Packages[path]
 			for tag, el := range p.Elements {
 				if strings.EqualFold(tag, name) {
 					pkg = el

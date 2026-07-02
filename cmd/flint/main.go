@@ -12,16 +12,22 @@
 //
 // The -info flag displays the registry entry for a named element,
 // including its types, constructors, typed constructors, methods,
-// attribute mappings, and vars. No linting is performed.
+// attribute mappings, vars, and (for a multi-element package such as
+// svg) its elements. No linting is performed. An element within a
+// multi-element package resolves by bare name, or by the
+// package:element form when the bare name is shadowed by a package
+// (svg:text, versus the text node package).
 //
 //	flint -info div
 //	flint -info input
-//	flint -info ol
+//	flint -info svg
+//	flint -info rect
+//	flint -info svg:text
 //
 // Pass one or more section names after the element to restrict the
 // output. Each section accepts a long form and (where useful) a short
 // form: types, constructors/ctors, typed-constructors/typed, methods,
-// attributes/attrs, vars.
+// attributes/attrs, vars, elements.
 //
 //	flint -info div methods
 //	flint -info input ctors attrs
@@ -72,7 +78,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  typed-constructors, typed\n")
 		fmt.Fprintf(os.Stderr, "  methods\n")
 		fmt.Fprintf(os.Stderr, "  attributes, attrs\n")
-		fmt.Fprintf(os.Stderr, "  vars\n\n")
+		fmt.Fprintf(os.Stderr, "  vars\n")
+		fmt.Fprintf(os.Stderr, "  elements\n\n")
 		fmt.Fprintf(os.Stderr, "Flags:\n")
 		flag.PrintDefaults()
 	}
