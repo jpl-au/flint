@@ -59,11 +59,13 @@ func (l *Linter) checkBufferHint(fset *token.FileSet, file *ast.File) []Diagnost
 	return diags
 }
 
-// staticSize is a conservative lower bound on the bytes the expression will
-// render: it sums the length of every string literal it contains. Dynamic content
-// (variables, loops, conditionals) counts as zero, so the real render is always at
-// least this large; tag markup is not counted either, which only makes the
-// estimate safer.
+// staticSize estimates the bytes the expression will render by summing the
+// length of every string literal it contains. Dynamic content (variables,
+// loops, conditionals) counts as zero and tag markup is not counted, which
+// pulls the estimate down; a literal in a non-rendered position (a comparison
+// inside a closure, say) counts even though it never renders, which pulls it
+// up. In typical trees the figure is a lower bound on the render size, and it
+// only ever gates an advisory hint, so the imprecision is acceptable.
 func staticSize(expr ast.Expr) int {
 	total := 0
 	ast.Inspect(expr, func(n ast.Node) bool {

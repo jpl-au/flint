@@ -29,6 +29,18 @@ flint -info input        # Show everything about <input>
 flint -info ol           # Show everything about <ol>
 ```
 
+For a multi-element package (svg, whose single import path hosts many shapes),
+querying the package lists its elements, a bare element name resolves within
+it, and the `package:element` form disambiguates an element whose name is
+shadowed by a package of its own (the svg `text` shape, versus the text node
+package).
+
+```bash
+flint -info svg          # The shared svg surface, plus its elements
+flint -info rect         # The rect shape within the svg package
+flint -info svg:text     # The svg text shape, not the text node package
+```
+
 Pass one or more section names after the element to restrict the output. Each section accepts a long form and (where useful) a short form:
 
 | Long form | Short form |
@@ -39,6 +51,7 @@ Pass one or more section names after the element to restrict the output. Each se
 | `methods` | |
 | `attributes` | `attrs` |
 | `vars` | |
+| `elements` | |
 
 ```bash
 flint -info div methods         # Just the methods
@@ -147,6 +160,23 @@ import "github.com/jpl-au/fluent/html5/select"  // flagged: use "dropdown" inste
 import "github.com/jpl-au/fluent/html5/main"     // flagged: use "primary" instead
 ```
 
+### Package alias shadowing
+
+A local variable, parameter, or range binding named after an imported fluent
+package shadows it. Names like `input`, `form`, and `option` are natural
+variable names, so this is an easy slip - and while the name is shadowed, code
+that reads as a package reference is not one. Flint names the collision
+directly so you can rename one side; its other diagnostics resolve identifiers
+through the file's imports, so they may also be misleading until it is fixed.
+
+```go
+import "github.com/jpl-au/fluent/html5/input"
+
+func handle(input string) {  // flagged: parameter "input" shadows the package
+	...
+}
+```
+
 ### Children built with append (advisory)
 
 A local `[]node.Node` grown with `append` and then passed into a Fluent call with
@@ -192,8 +222,8 @@ on all but genuinely large trees.
 div.Static(`...five KiB of markup as a literal...`)   // chain .BufferHint(5120)
 ```
 
-The size is a lower bound: flint counts only the string literals it can see, so
-the real render is always at least that large.
+The size is an estimate from the string literals flint can see: dynamic content
+counts as zero, so in typical trees the real render is at least that large.
 
 ## Library usage
 
