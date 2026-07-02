@@ -88,6 +88,9 @@ func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnost
 		return nil
 	}
 
+	imports := resolveImports(file)
+	locals := fluentLocals(file, imports, l.registry)
+
 	var diags []Diagnostic
 
 	ast.Inspect(file, func(n ast.Node) bool {
@@ -102,6 +105,14 @@ func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnost
 		}
 
 		if sel.Sel.Name != "SetAttribute" {
+			return true
+		}
+
+		// Scope to fluent receivers: an inline chain that roots at a fluent
+		// package, or a local assigned from one. SetAttribute is a common
+		// method name in other libraries (DOM wrappers, XML builders), and
+		// their attributes have no fluent typed method to suggest.
+		if !l.isFluentReceiver(sel.X, imports, locals) {
 			return true
 		}
 
@@ -156,4 +167,61 @@ func mergeAttrMethods(reg *Registry) map[string]string {
 		maps.Copy(combined, pkg.AttrMethods)
 	}
 	return combined
+}
+
+// isFluentReceiver reports whether expr plausibly evaluates to a fluent
+// element: an inline chain rooting at a fluent package (div.New().ID("x")),
+// or a bare local whose name was assigned from such a chain (d := div.New()).
+// A local of unresolvable origin (a parameter, a call into user code) does
+// not qualify, so the checks that use this stay quiet rather than guess.
+func (l *Linter) isFluentReceiver(expr ast.Expr, imports map[string]string, locals map[string]bool) bool {
+	if _, ok := chainPackage(expr, imports, l.registry); ok {
+		return true
+	}
+	if id, ok := unparen(expr).(*ast.Ident); ok {
+		return locals[id.Name]
+	}
+	return false
+}
+
+// fluentLocals collects the names of variables assigned anywhere in the file
+// from an expression that chains back to a fluent package, e.g. d := div.New()
+// or el = span.New().Class("x"). Names are collected file-wide, not per scope:
+// a rare same-named non-fluent variable in another function may slip through,
+// which errs towards the pre-existing behaviour only in files that already
+// build fluent elements.
+func fluentLocals(file *ast.File, imports map[string]string, reg *Registry) map[string]bool {
+	locals := make(map[string]bool)
+	record := func(lhs, rhs ast.Expr) {
+		id, ok := lhs.(*ast.Ident)
+		if !ok || id.Name == "_" {
+			return
+		}
+		if _, ok := rhs.(*ast.CallExpr); !ok {
+			return
+		}
+		if _, ok := chainPackage(rhs, imports, reg); ok {
+			locals[id.Name] = true
+		}
+	}
+
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch x := n.(type) {
+		case *ast.AssignStmt:
+			if len(x.Lhs) == len(x.Rhs) {
+				for i := range x.Lhs {
+					record(x.Lhs[i], x.Rhs[i])
+				}
+			}
+		case *ast.ValueSpec:
+			if len(x.Names) == len(x.Values) {
+				for i := range x.Names {
+					record(x.Names[i], x.Values[i])
+				}
+			}
+		}
+		return true
+	})
+
+	return locals
 }

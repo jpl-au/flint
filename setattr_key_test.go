@@ -77,6 +77,14 @@ func TestCheckSetAttrKeyPositive(t *testing.T) {
 			),
 			want: `SetAttribute("aria-label", ...) should use SetAria("label", ...) instead`,
 		},
+		{
+			name: "var-declared local from fluent chain",
+			src: wrapWithImports(
+				[]string{"github.com/jpl-au/fluent/html5/div"},
+				`var d = div.New(); d.SetAttribute("class", "container")`,
+			),
+			want: `SetAttribute("class", ...) bypasses the dedicated field; use .Class() instead`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -138,6 +146,21 @@ func TestCheckSetAttrKeyNegative(t *testing.T) {
 			name:    "using Style method directly is fine",
 			imports: []string{"github.com/jpl-au/fluent/html5/div"},
 			body:    `_ = div.New().Style("color:red")`,
+		},
+		{
+			name:    "non-fluent receiver is not checked",
+			imports: []string{"example.com/xmllib"},
+			body:    `el := xmllib.NewElement("a"); el.SetAttribute("class", "x"); el.SetAttribute("data-id", "1")`,
+		},
+		{
+			name:    "non-fluent receiver in a file that also uses fluent",
+			imports: []string{"github.com/jpl-au/fluent/html5/div", "example.com/xmllib"},
+			body:    `_ = div.New(); el := xmllib.NewElement("a"); el.SetAttribute("class", "x")`,
+		},
+		{
+			name:    "local of unresolvable origin is not checked",
+			imports: []string{"github.com/jpl-au/fluent/html5/div"},
+			body:    `_ = div.New(); el := makeThing(); el.SetAttribute("class", "x")`,
 		},
 	}
 
