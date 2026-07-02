@@ -38,8 +38,8 @@ func TestInfo(t *testing.T) {
 			name:    "div typed params show enum annotation",
 			element: "div",
 			want: []string{
-				"Dir  (enum: dir)",
-				"Translate  (enum: translate)",
+				"Dir(1)  (enum: dir)",
+				"Translate(1)  (enum: translate)",
 			},
 		},
 		{

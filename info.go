@@ -176,10 +176,16 @@ func (r *Registry) Info(w io.Writer, name string, sections ...string) error {
 	if show("methods") && len(pkg.Methods) > 0 {
 		pw.printf("\nMethods:\n")
 		for _, m := range sortedKeys(pkg.Methods) {
-			if tp, ok := pkg.TypedParams[m]; ok {
-				pw.printf("  %s  (enum: %s)\n", m, tp)
+			var sig string
+			if arity := pkg.Methods[m]; arity == -1 {
+				sig = fmt.Sprintf("%s(...)  variadic", m)
 			} else {
-				pw.printf("  %s\n", m)
+				sig = fmt.Sprintf("%s(%d)", m, arity)
+			}
+			if tp, ok := pkg.TypedParams[m]; ok {
+				pw.printf("  %s  (enum: %s)\n", sig, tp)
+			} else {
+				pw.printf("  %s\n", sig)
 			}
 		}
 	}

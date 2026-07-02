@@ -42,7 +42,7 @@ func TestFluentRegistryLoads(t *testing.T) {
 		case "func":
 			_, found = pkg.Functions[c.symbol]
 		case "method":
-			found = pkg.Methods[c.symbol]
+			_, found = pkg.Methods[c.symbol]
 		case "var":
 			found = pkg.Vars[c.symbol]
 		}

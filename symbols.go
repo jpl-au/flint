@@ -87,7 +87,7 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 			if alias, fn, ok := chainRootFunc(sel.X, imports); ok {
 				if ret, known := pkg.FuncReturns[fn]; known {
 					if methods := l.registry.typeMethods(ret); methods != nil {
-						if methods[method] {
+						if _, exists := methods[method]; exists {
 							return true
 						}
 						diags = append(diags, Diagnostic{
@@ -104,7 +104,10 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 			// Fallback for packages without per-constructor return-type data (e.g.
 			// html5 elements): accept any method in the element's flat method set,
 			// or any package constructor name.
-			if pkg.Methods == nil || pkg.Methods[method] {
+			if pkg.Methods == nil {
+				return true
+			}
+			if _, exists := pkg.Methods[method]; exists {
 				return true
 			}
 			if _, ok := pkg.Functions[method]; ok {

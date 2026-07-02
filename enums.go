@@ -42,8 +42,10 @@ func (l *Linter) checkTypedParams(fset *token.FileSet, file *ast.File) []Diagnos
 		// a method this element does not have would be misleading.
 		if _, fn, ok := chainRootFunc(sel.X, imports); ok {
 			if ret, known := pkg.FuncReturns[fn]; known {
-				if methods := l.registry.typeMethods(ret); methods != nil && !methods[methodName] {
-					return true
+				if methods := l.registry.typeMethods(ret); methods != nil {
+					if _, exists := methods[methodName]; !exists {
+						return true
+					}
 				}
 			}
 		}

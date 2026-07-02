@@ -167,7 +167,7 @@ func TestSVGInfo(t *testing.T) {
 				// Match the standalone method line: every svg element carries a
 				// StrokeWidth method, so a bare "Width" substring is not specific
 				// to the Width setter that distinguishes rect from stop.
-				"  Width\n",
+				"  Width(1)\n",
 				"Fill",
 			},
 			notWant: []string{"Offset"},
@@ -179,7 +179,7 @@ func TestSVGInfo(t *testing.T) {
 				"Element: stop",
 				"Offset",
 			},
-			notWant: []string{"  Width\n"},
+			notWant: []string{"  Width(1)\n"},
 		},
 		{
 			name:    "svg package lists its elements",
@@ -205,7 +205,7 @@ func TestSVGInfo(t *testing.T) {
 		{
 			name:    "svg:rect prefix reaches the rect shape",
 			element: "svg:rect",
-			want:    []string{"Element: rect", "  Width\n"},
+			want:    []string{"Element: rect", "  Width(1)\n"},
 			notWant: []string{"Offset"},
 		},
 		{

@@ -33,10 +33,11 @@ type Package struct {
 	// this to validate both symbol existence and call arity.
 	Functions map[string]int
 
-	// Methods lists methods available on the package's primary type.
-	// For element packages this is the element type (Class, ID, Name, etc.).
-	// Nil for packages that have no primary type (node, text).
-	Methods map[string]bool
+	// Methods maps the methods available on the package's primary type to
+	// their expected argument count, with -1 for variadic (the Functions
+	// convention). For element packages this is the element type (Class, ID,
+	// Name, etc.). Nil for packages that have no primary type (node, text).
+	Methods map[string]int
 
 	// Types lists exported type names (interfaces, structs, type aliases).
 	// For the node package these are Node, Element, Dynamic, etc. For
@@ -78,10 +79,11 @@ type Package struct {
 	FuncReturns map[string]string
 
 	// TypeMethods lists the method set of a named exported type, keyed by the
-	// bare type name. It is populated only for types that FuncReturns points at,
+	// bare type name, with each method mapped to its argument count (-1
+	// variadic). It is populated only for types that FuncReturns points at,
 	// so the chained-method check can resolve them. For the node package:
-	// "Node" -> {Render, RenderBuilder, Nodes}.
-	TypeMethods map[string]map[string]bool
+	// "Node" -> {Render: -1, RenderBuilder: 1, Nodes: 0}.
+	TypeMethods map[string]map[string]int
 
 	// Elements describes the individual elements of a multi-element package,
 	// keyed by HTML tag (e.g. "rect" for the svg package, whose single import
@@ -96,7 +98,7 @@ type Package struct {
 // "github.com/jpl-au/fluent/node.Node", or nil when the type or its methods are
 // not recorded. The qualifier splits at the final dot: a Go type name never
 // contains one, so everything before it is the import path.
-func (r *Registry) typeMethods(qualified string) map[string]bool {
+func (r *Registry) typeMethods(qualified string) map[string]int {
 	i := strings.LastIndex(qualified, ".")
 	if i < 0 {
 		return nil

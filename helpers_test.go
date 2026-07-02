@@ -69,9 +69,9 @@ func testRegistry() *Registry {
 			"github.com/jpl-au/fluent/html5/div": {
 				Functions: map[string]int{"New": -1},
 				Types:     map[string]bool{"Element": true},
-				Methods: map[string]bool{
-					"Class": true, "ID": true, "Text": true,
-					"Static": true, "Add": true, "Dynamic": true,
+				Methods: map[string]int{
+					"Class": 1, "ID": 1, "Text": 1,
+					"Static": 1, "Add": -1, "Dynamic": -1,
 				},
 			},
 			"github.com/jpl-au/fluent/html5/input": {
@@ -80,10 +80,10 @@ func testRegistry() *Registry {
 					"Password": 1, "Checkbox": 2,
 				},
 				Types: map[string]bool{"Element": true},
-				Methods: map[string]bool{
-					"Class": true, "ID": true, "Name": true,
-					"Value": true, "Type": true, "Required": true,
-					"Placeholder": true,
+				Methods: map[string]int{
+					"Class": 1, "ID": 1, "Name": 1,
+					"Value": 1, "Type": 1, "Required": -1,
+					"Placeholder": 1,
 				},
 			},
 			"github.com/jpl-au/fluent/text": {
@@ -102,8 +102,8 @@ func testRegistry() *Registry {
 					"Node": true, "Element": true, "Dynamic": true,
 					"Attribute": true, "Memoiser": true,
 				},
-				TypeMethods: map[string]map[string]bool{
-					"Node": {"Render": true, "RenderBuilder": true, "Nodes": true},
+				TypeMethods: map[string]map[string]int{
+					"Node": {"Render": -1, "RenderBuilder": 1, "Nodes": 0},
 				},
 			},
 			"github.com/jpl-au/fluent-security": {
@@ -112,9 +112,9 @@ func testRegistry() *Registry {
 					"RichText": 0, "FromPolicy": 1, "Nonce": 0,
 				},
 				Types: map[string]bool{"Cleaner": true},
-				Methods: map[string]bool{
-					"Allow": true, "AllowAttr": true,
-					"AllowClasses": true, "Clean": true,
+				Methods: map[string]int{
+					"Allow": -1, "AllowAttr": -1,
+					"AllowClasses": -1, "Clean": 1,
 				},
 				FuncReturns: map[string]string{
 					"HTML":      "github.com/jpl-au/fluent/node.Node",

@@ -39,7 +39,10 @@ func (l *Linter) checkBufferHint(fset *token.FileSet, file *ast.File) []Diagnost
 		// so its children are not flagged in their own right (the parent's size
 		// already includes them).
 		pkg, ok := chainPackage(call.Fun, imports, l.registry)
-		if !ok || !pkg.Methods["BufferHint"] {
+		if !ok {
+			return true
+		}
+		if _, hasHint := pkg.Methods["BufferHint"]; !hasHint {
 			return true
 		}
 
