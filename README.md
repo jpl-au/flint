@@ -188,8 +188,8 @@ is optional and setting it cannot break anything, so the size gate keeps it quie
 on all but genuinely large trees.
 
 ```go
-// info: this element renders at least 4196 bytes of static content
-div.Static(trustedLongString)   // chain .BufferHint(4196)
+// info: this element renders at least 5120 bytes of static content
+div.Static(`...five KiB of markup as a literal...`)   // chain .BufferHint(5120)
 ```
 
 The size is a lower bound: flint counts only the string literals it can see, so
