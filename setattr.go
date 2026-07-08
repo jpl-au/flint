@@ -150,7 +150,7 @@ func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnost
 			End:      fset.Position(call.End()),
 			Severity: Warning,
 			Message:  fmt.Sprintf("SetAttribute(%q, ...) bypasses the dedicated field; use .%s() instead", key, method),
-			Fix:      fmt.Sprintf(".%s() manages this attribute through a struct field; SetAttribute writes to the generic attribute slice and can produce duplicate attributes", method),
+			Fix:      fmt.Sprintf(".%s() manages this attribute through a struct field, and for URL attributes filters the scheme against the allowlist; SetAttribute escapes the value but does not filter and can produce duplicate attributes, so reach for it only as the deliberate escaped-but-unfiltered override (SetAttributeRaw skips escaping too)", method),
 		})
 
 		return true
