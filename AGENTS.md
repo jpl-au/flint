@@ -159,6 +159,12 @@ div.New().Class("x")
 div.New().SetData("id", "123")
 ```
 
+There is a safety dimension too: for URL attributes the typed methods
+(`Href`, `Src`, ...) scheme-filter the value, whereas `SetAttribute`
+escapes but does not filter, and `SetAttributeRaw` stores the value
+verbatim (trusted content only). Preferring the typed method keeps URL
+filtering on.
+
 ### Reserved keyword imports
 
 Catches imports using Go reserved keywords instead of Fluent's

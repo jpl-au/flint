@@ -152,6 +152,8 @@ div.New().SetAttribute("class", "x")         // flagged: use .Class() instead
 div.New().SetAttribute("data-id", "123")     // flagged: use SetData("id", ...) instead
 ```
 
+There is also a safety reason to prefer the typed methods. For URL attributes (`href`, `src`, ...) the typed methods scheme-filter the value against the allowlist, whereas `SetAttribute` escapes the value but does not filter it. `SetAttributeRaw` does neither - it stores the value verbatim, for trusted content only.
+
 ### Reserved keyword imports
 
 Go reserved keywords used as import paths are flagged with the correct Fluent alternative.
