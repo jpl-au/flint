@@ -82,7 +82,7 @@ type Package struct {
 	// bare type name, with each method mapped to its argument count (-1
 	// variadic). It is populated only for types that FuncReturns points at,
 	// so the chained-method check can resolve them. For the node package:
-	// "Node" -> {Render: -1, RenderBuilder: 1, Nodes: 0}.
+	// "Node" -> {Render: 1, WriteTo: 1, RenderBytes: 0, RenderBuilder: 1, Nodes: 0}.
 	TypeMethods map[string]map[string]int
 
 	// Elements describes the individual elements of a multi-element package,
