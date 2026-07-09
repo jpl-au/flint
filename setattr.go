@@ -42,7 +42,7 @@ func (l *Linter) checkSetAttrChain(fset *token.FileSet, file *ast.File) []Diagno
 			return true
 		}
 
-		if innerSel.Sel.Name != "SetAttribute" {
+		if innerSel.Sel.Name != "SetAttribute" && innerSel.Sel.Name != "SetAttributeRaw" {
 			return true
 		}
 
@@ -56,8 +56,8 @@ func (l *Linter) checkSetAttrChain(fset *token.FileSet, file *ast.File) []Diagno
 		diags = append(diags, Diagnostic{
 			Pos:     fset.Position(sel.Sel.Pos()),
 			End:     fset.Position(sel.Sel.End()),
-			Message: "SetAttribute does not return the element; cannot chain ." + sel.Sel.Name + "() after it",
-			Fix:     "Call SetAttribute separately, or use SetData/SetAria which do support chaining",
+			Message: innerSel.Sel.Name + " does not return the element; cannot chain ." + sel.Sel.Name + "() after it",
+			Fix:     "Call " + innerSel.Sel.Name + " separately, or use SetData/SetAria which do support chaining",
 		})
 
 		return true
@@ -81,8 +81,8 @@ var prefixHelpers = []prefixHelper{
 	{"aria-", "SetAria"},
 }
 
-// checkSetAttrKey reports calls to SetAttribute where the key is a
-// known HTML attribute that has a dedicated typed method.
+// checkSetAttrKey reports calls to SetAttribute or SetAttributeRaw where the
+// key is a known HTML attribute that has a dedicated typed method.
 func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnostic {
 	if l.registry == nil {
 		return nil
@@ -104,7 +104,8 @@ func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnost
 			return true
 		}
 
-		if sel.Sel.Name != "SetAttribute" {
+		name := sel.Sel.Name
+		if name != "SetAttribute" && name != "SetAttributeRaw" {
 			return true
 		}
 
@@ -133,8 +134,8 @@ func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnost
 					Pos:      fset.Position(keyLit.Pos()),
 					End:      fset.Position(call.End()),
 					Severity: Warning,
-					Message:  fmt.Sprintf("SetAttribute(%q, ...) should use %s(%q, ...) instead", key, p.helper, suffix),
-					Fix:      fmt.Sprintf("%s supports chaining and groups %s attributes; SetAttribute does not return the element", p.helper, strings.TrimSuffix(p.prefix, "-")),
+					Message:  fmt.Sprintf("%s(%q, ...) should use %s(%q, ...) instead", name, key, p.helper, suffix),
+					Fix:      fmt.Sprintf("%s supports chaining and groups %s attributes; %s does not return the element", p.helper, strings.TrimSuffix(p.prefix, "-"), name),
 				})
 				return true
 			}
@@ -145,12 +146,19 @@ func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnost
 			return true
 		}
 
+		// The raw variant deserves the sharper warning: it bypasses the typed
+		// method, the set-time escaping AND the URL scheme filter, so a known
+		// attribute written through it is the most exposed shape flint can see.
+		fix := fmt.Sprintf(".%s() manages this attribute through a struct field, and for URL attributes filters the scheme against the allowlist; SetAttribute escapes the value but does not filter and can produce duplicate attributes, so reach for it only as the deliberate escaped-but-unfiltered override (SetAttributeRaw skips escaping too)", method)
+		if name == "SetAttributeRaw" {
+			fix = fmt.Sprintf(".%s() manages this attribute through a struct field, escapes the value and for URL attributes filters the scheme against the allowlist; SetAttributeRaw does none of that, so keep it only when these exact raw bytes are the point", method)
+		}
 		diags = append(diags, Diagnostic{
 			Pos:      fset.Position(keyLit.Pos()),
 			End:      fset.Position(call.End()),
 			Severity: Warning,
-			Message:  fmt.Sprintf("SetAttribute(%q, ...) bypasses the dedicated field; use .%s() instead", key, method),
-			Fix:      fmt.Sprintf(".%s() manages this attribute through a struct field, and for URL attributes filters the scheme against the allowlist; SetAttribute escapes the value but does not filter and can produce duplicate attributes, so reach for it only as the deliberate escaped-but-unfiltered override (SetAttributeRaw skips escaping too)", method),
+			Message:  fmt.Sprintf("%s(%q, ...) bypasses the dedicated field; use .%s() instead", name, key, method),
+			Fix:      fix,
 		})
 
 		return true

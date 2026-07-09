@@ -62,12 +62,36 @@ func TestCheckSetAttrKeyPositive(t *testing.T) {
 			want: `SetAttribute("style", ...) bypasses the dedicated field; use .Style() instead`,
 		},
 		{
+			name: "standalone SetAttributeRaw href on anchor",
+			src: wrapWithImports(
+				[]string{"github.com/jpl-au/fluent/html5/a"},
+				`d := a.New(); d.SetAttributeRaw("href", "/home")`,
+			),
+			want: `SetAttributeRaw("href", ...) bypasses the dedicated field; use .Href() instead`,
+		},
+		{
+			name: "standalone SetAttributeRaw class",
+			src: wrapWithImports(
+				[]string{"github.com/jpl-au/fluent/html5/div"},
+				`d := div.New(); d.SetAttributeRaw("class", "container")`,
+			),
+			want: `SetAttributeRaw("class", ...) bypasses the dedicated field; use .Class() instead`,
+		},
+		{
 			name: "data- prefix suggests SetData",
 			src: wrapWithImports(
 				[]string{"github.com/jpl-au/fluent/html5/div"},
 				`d := div.New(); d.SetAttribute("data-id", "123")`,
 			),
 			want: `SetAttribute("data-id", ...) should use SetData("id", ...) instead`,
+		},
+		{
+			name: "data- prefix through SetAttributeRaw suggests SetData",
+			src: wrapWithImports(
+				[]string{"github.com/jpl-au/fluent/html5/div"},
+				`d := div.New(); d.SetAttributeRaw("data-id", "123")`,
+			),
+			want: `SetAttributeRaw("data-id", ...) should use SetData("id", ...) instead`,
 		},
 		{
 			name: "aria- prefix suggests SetAria",
@@ -131,6 +155,11 @@ func TestCheckSetAttrKeyNegative(t *testing.T) {
 			name:    "x-data is fine",
 			imports: []string{"github.com/jpl-au/fluent/html5/div"},
 			body:    `d := div.New(); d.SetAttribute("x-data", "{}")`,
+		},
+		{
+			name:    "custom attribute through SetAttributeRaw is fine",
+			imports: []string{"github.com/jpl-au/fluent/html5/div"},
+			body:    `d := div.New(); d.SetAttributeRaw("hx-vals", "{&quot;a&quot;:1}")`,
 		},
 		{
 			name:    "variable key is not checked",

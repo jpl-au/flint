@@ -27,9 +27,20 @@ func TestCheckSetAttrChain(t *testing.T) {
 			want:    "SetAttribute does not return the element; cannot chain .ID() after it",
 		},
 		{
+			name:    "chaining method after SetAttributeRaw is flagged",
+			imports: []string{"github.com/jpl-au/fluent/html5/div"},
+			body:    `_ = div.New().SetAttributeRaw("x-data", "{}").Class("container")`,
+			want:    "SetAttributeRaw does not return the element; cannot chain .Class() after it",
+		},
+		{
 			name:    "SetAttribute as final call is fine",
 			imports: []string{"github.com/jpl-au/fluent/html5/div"},
 			body:    `d := div.New().Class("x"); d.SetAttribute("hx-get", "/items")`,
+		},
+		{
+			name:    "SetAttributeRaw as final call is fine",
+			imports: []string{"github.com/jpl-au/fluent/html5/div"},
+			body:    `d := div.New().Class("x"); d.SetAttributeRaw("hx-get", "/items")`,
 		},
 		{
 			name:    "SetData chaining is fine",
@@ -53,7 +64,7 @@ func TestCheckSetAttrChain(t *testing.T) {
 
 			if tt.want == "" {
 				for _, d := range diags {
-					if strings.Contains(d.Message, "SetAttribute does not return") {
+					if strings.Contains(d.Message, "does not return the element") {
 						t.Errorf("unexpected diagnostic: %s", d.Message)
 					}
 				}
@@ -112,7 +123,7 @@ func TestCheckSetAttrChainScoped(t *testing.T) {
 
 			if tt.want == "" {
 				for _, d := range diags {
-					if strings.Contains(d.Message, "SetAttribute does not return") {
+					if strings.Contains(d.Message, "does not return the element") {
 						t.Errorf("unexpected diagnostic: %s", d.Message)
 					}
 				}
