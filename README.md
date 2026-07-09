@@ -64,8 +64,9 @@ flint -info ol typed            # Typed constructors only
 | Flag | Description |
 |------|-------------|
 | `-include-tests` | Include `_test.go` files (excluded by default) |
-| `-no-registry` | Disable symbol validation (only run Static/RawText checks) |
+| `-no-registry` | Disable registry-backed symbol validation; the literal Static/RawText and SetAttribute-chain checks still run |
 | `-info <element> [section]...` | Show registry info for an element and exit |
+| `-version` | Print flint version and exit |
 
 Exit codes: `0` clean or advisory-only, `1` errors found, `2` usage or I/O error.
 

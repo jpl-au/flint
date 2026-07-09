@@ -3,7 +3,7 @@
 package flint
 
 // FluentRegistry returns the generated API surface registry for fluent.
-// Pass this to WithRegistry to enable symbol validation.
+// Pass this to [New] to enable symbol validation.
 func FluentRegistry() *Registry {
 	return &Registry{
 		Packages: map[string]Package{

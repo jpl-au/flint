@@ -35,9 +35,10 @@
 //
 // Flags:
 //
-//	-no-registry     Disable symbol validation (only run Static/RawText checks)
+//	-no-registry     Disable registry-backed validation (literal and SetAttribute-chain checks still run)
 //	-include-tests   Include _test.go files in the analysis
 //	-info <element>  Show registry info for an element and exit
+//	-version         Print flint version and exit
 //
 // Exit codes:
 //

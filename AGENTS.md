@@ -26,7 +26,7 @@ flint -info input
 Pass one or more section names after the element to restrict the
 output. Each accepts a long form and (where useful) a short form:
 `types`, `constructors`/`ctors`, `typed-constructors`/`typed`,
-`methods`, `attributes`/`attrs`, `vars`.
+`methods`, `attributes`/`attrs`, `vars`, `elements`.
 
 ```bash
 flint -info div methods         # Just the methods
