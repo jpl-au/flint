@@ -35,16 +35,26 @@
 //
 // Flags:
 //
-//	-no-registry     Disable registry-backed validation (literal and SetAttribute-chain checks still run)
-//	-include-tests   Include _test.go files in the analysis
-//	-info <element>  Show registry info for an element and exit
-//	-version         Print flint version and exit
+//	-no-registry        Disable registry-backed validation (literal and SetAttribute-chain checks still run)
+//	-include-tests      Include _test.go files in the analysis
+//	-info <element>     Show registry info for an element and exit
+//	-telemetry <value>  Set telemetry mode (off|local|on) or show it (status), then exit
+//	-version            Print flint version and exit
+//
+// Telemetry is opt-in and off by default. When set to local or on, an ordinary
+// lint run records its diagnostics and attribute usage to a local .tlf file; the
+// chosen mode persists in the user config directory. The on mode reserves the
+// "collect and upload" meaning and behaves as local until upload exists.
+//
+//	flint -telemetry local     Enable local collection
+//	flint -telemetry off       Disable collection
+//	flint -telemetry status    Print the current mode
 //
 // Exit codes:
 //
 //	0  No errors found (warnings may be present)
 //	1  One or more errors found
-//	2  Usage or I/O error (including unknown element for -info)
+//	2  Usage or I/O error (including unknown element for -info or unknown -telemetry mode)
 package main
 
 import (
@@ -58,12 +68,14 @@ import (
 	"strings"
 
 	"github.com/jpl-au/flint"
+	"github.com/jpl-au/flint/telemetry"
 )
 
 func main() {
 	noRegistry := flag.Bool("no-registry", false, "Disable symbol validation")
 	includeTests := flag.Bool("include-tests", false, "Include _test.go files")
 	infoElement := flag.String("info", "", "Show registry info for an element (e.g. -info div, or -info svg:rect for a shape within a package)")
+	telemetryMode := flag.String("telemetry", "", "Set telemetry mode (off|local|on) or show it (status)")
 	showVersion := flag.Bool("version", false, "Print flint version and exit")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: flint [flags] <pattern>...\n")
@@ -81,6 +93,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  attributes, attrs\n")
 		fmt.Fprintf(os.Stderr, "  vars\n")
 		fmt.Fprintf(os.Stderr, "  elements\n\n")
+		fmt.Fprintf(os.Stderr, "Telemetry (opt-in, off by default):\n")
+		fmt.Fprintf(os.Stderr, "  -telemetry local     Record diagnostics and attribute usage to local .tlf files\n")
+		fmt.Fprintf(os.Stderr, "  -telemetry off       Disable collection\n")
+		fmt.Fprintf(os.Stderr, "  -telemetry status    Print the current mode\n\n")
 		fmt.Fprintf(os.Stderr, "Flags:\n")
 		flag.PrintDefaults()
 	}
@@ -88,6 +104,18 @@ func main() {
 
 	if *showVersion {
 		fmt.Println(version())
+		return
+	}
+
+	if *telemetryMode != "" {
+		dir, err := telemetry.ConfigDir()
+		if err == nil {
+			err = telemetryCommand(os.Stdout, dir, *telemetryMode)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "flint: %v\n", err)
+			os.Exit(2)
+		}
 		return
 	}
 
@@ -114,6 +142,11 @@ func main() {
 
 	args := flag.Args()
 
+	// A nil sink when telemetry is off, so recording is a no-op and no run is
+	// opened. Closed once after the loop, before any os.Exit, so a single .tlf
+	// covers the whole run (os.Exit does not run deferred calls).
+	sink := openTelemetry(flintVersion())
+
 	var errors, warnings int
 	var hadErrors bool
 	var stdinUsed bool
@@ -126,7 +159,7 @@ func main() {
 				continue
 			}
 			stdinUsed = true
-			e, w, err := checkStdin(l)
+			e, w, err := checkStdin(l, sink)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "flint: %v\n", err)
 				hadErrors = true
@@ -144,7 +177,7 @@ func main() {
 			continue
 		}
 		for _, path := range files {
-			e, w, err := checkFile(l, path)
+			e, w, err := checkFile(l, sink, path)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "flint: %v\n", err)
 				hadErrors = true
@@ -154,6 +187,9 @@ func main() {
 			warnings += w
 		}
 	}
+
+	// Flush telemetry before any os.Exit below, which would skip a deferred close.
+	sink.close()
 
 	if hadErrors {
 		os.Exit(2)
@@ -232,26 +268,27 @@ func findGoFiles(root string, recursive, includeTests bool) ([]string, error) {
 }
 
 // checkFile reads a file and runs all lint checks against it.
-func checkFile(l *flint.Linter, path string) (int, int, error) {
+func checkFile(l *flint.Linter, sink *telemetrySink, path string) (int, int, error) {
 	src, err := os.ReadFile(path)
 	if err != nil {
 		return 0, 0, err
 	}
-	return check(l, path, src)
+	return check(l, sink, path, src)
 }
 
 // checkStdin reads source code from standard input and runs all lint checks.
-func checkStdin(l *flint.Linter) (int, int, error) {
+func checkStdin(l *flint.Linter, sink *telemetrySink) (int, int, error) {
 	src, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return 0, 0, fmt.Errorf("reading stdin: %w", err)
 	}
-	return check(l, "<stdin>", src)
+	return check(l, sink, "<stdin>", src)
 }
 
-// check runs all lint checks against src and prints diagnostics to stdout.
-// Returns the number of errors and warnings found.
-func check(l *flint.Linter, filename string, src []byte) (int, int, error) {
+// check runs all lint checks against src and prints diagnostics to stdout,
+// recording them to sink when telemetry is enabled. Returns the number of
+// errors and warnings found.
+func check(l *flint.Linter, sink *telemetrySink, filename string, src []byte) (int, int, error) {
 	diags, err := l.Source(filename, src)
 	if err != nil {
 		return 0, 0, fmt.Errorf("parsing %s: %w", filename, err)
@@ -273,6 +310,8 @@ func check(l *flint.Linter, filename string, src []byte) (int, int, error) {
 		// so it never contributes to the summary or a non-zero exit.
 	}
 
+	sink.record(l, filename, src, diags)
+
 	return errors, warnings, nil
 }
 
@@ -289,13 +328,18 @@ func printSummary(errors, warnings int) {
 }
 
 // version returns a string of the form "flint <version>" suitable
-// for the -version flag. The version comes from the embedded module
-// build info populated by go install (e.g. v0.2.2 from a module
-// installed by tag) and falls back to (devel) for unstamped builds.
+// for the -version flag.
 func version() string {
-	v := "(devel)"
+	return "flint " + flintVersion()
+}
+
+// flintVersion returns the bare flint version, for example "v0.2.2". It comes
+// from the embedded module build info populated by go install (a module
+// installed by tag) and falls back to "(devel)" for unstamped builds. Telemetry
+// records it alongside each run, so -version and telemetry always agree.
+func flintVersion() string {
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" {
-		v = info.Main.Version
+		return info.Main.Version
 	}
-	return "flint " + v
+	return "(devel)"
 }

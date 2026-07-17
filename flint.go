@@ -50,6 +50,11 @@ func (s Severity) String() string {
 
 // Diagnostic reports a single problem found in the source code.
 type Diagnostic struct {
+	// Check is the short, stable, lowercase name of the check that produced
+	// this diagnostic, for example "static" or "setattr-key". It identifies a
+	// diagnostic's origin for telemetry and reporting, independent of the
+	// message wording.
+	Check    string
 	Pos      token.Position
 	End      token.Position
 	Severity Severity
@@ -60,9 +65,10 @@ type Diagnostic struct {
 // Linter validates Go source code that uses the fluent HTML framework.
 // Create one with New and reuse it across files.
 type Linter struct {
-	registry    *Registry
-	attrMethods map[string]string
-	tagAliases  map[string]string
+	registry     *Registry
+	attrMethods  map[string]string
+	attrByMethod map[string]string
+	tagAliases   map[string]string
 }
 
 // New creates a Linter with the given registry. Pass FluentRegistry()
@@ -71,6 +77,7 @@ func New(r *Registry) *Linter {
 	l := &Linter{registry: r}
 	if r != nil {
 		l.attrMethods = mergeAttrMethods(r)
+		l.attrByMethod = invertAttrMethods(l.attrMethods)
 		l.tagAliases = r.TagAliases()
 	}
 	return l

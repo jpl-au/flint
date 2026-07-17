@@ -68,6 +68,7 @@ func (l *Linter) checkTypedParams(fset *token.FileSet, file *ast.File) []Diagnos
 
 		lit := arg.(*ast.BasicLit)
 		diags = append(diags, Diagnostic{
+			Check:    "typed-params",
 			Pos:      fset.Position(arg.Pos()),
 			End:      fset.Position(arg.End()),
 			Severity: Warning,

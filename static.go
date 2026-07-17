@@ -9,6 +9,7 @@ import (
 // literalArgCheck describes a check that flags calls to named functions
 // where the first argument is not a string literal.
 type literalArgCheck struct {
+	name     string   // check name recorded on the diagnostic
 	names    []string // function/method names to match
 	nargs    int      // exact arg count to match, or -1 for any
 	severity Severity
@@ -21,6 +22,7 @@ type literalArgCheck struct {
 // must not contain dynamic values.
 func (l *Linter) checkStatic(fset *token.FileSet, file *ast.File) []Diagnostic {
 	return l.checkLiteralArgs(fset, file, literalArgCheck{
+		name:     "static",
 		names:    []string{"Static"},
 		nargs:    1,
 		severity: Warning,
@@ -88,6 +90,7 @@ func (l *Linter) checkLiteralArgs(fset *token.FileSet, file *ast.File, check lit
 		}
 
 		diags = append(diags, Diagnostic{
+			Check:    check.name,
 			Pos:      fset.Position(arg.Pos()),
 			End:      fset.Position(arg.End()),
 			Severity: check.severity,

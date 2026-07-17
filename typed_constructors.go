@@ -89,6 +89,7 @@ func (l *Linter) checkTypedConstructors(fset *token.FileSet, file *ast.File) []D
 		ctor := bestTypedConstructor(pkg.TypedConstructors, childShort)
 		if ctor != "" {
 			diags = append(diags, Diagnostic{
+				Check:    "typed-constructors",
 				Pos:      fset.Position(sel.Sel.Pos()),
 				End:      fset.Position(call.End()),
 				Severity: Warning,

@@ -54,6 +54,7 @@ func (l *Linter) checkSetAttrChain(fset *token.FileSet, file *ast.File) []Diagno
 		}
 
 		diags = append(diags, Diagnostic{
+			Check:   "setattr-chain",
 			Pos:     fset.Position(sel.Sel.Pos()),
 			End:     fset.Position(sel.Sel.End()),
 			Message: innerSel.Sel.Name + " does not return the element; cannot chain ." + sel.Sel.Name + "() after it",
@@ -131,6 +132,7 @@ func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnost
 		for _, p := range prefixHelpers {
 			if suffix, ok := strings.CutPrefix(key, p.prefix); ok {
 				diags = append(diags, Diagnostic{
+					Check:    "setattr-key",
 					Pos:      fset.Position(keyLit.Pos()),
 					End:      fset.Position(call.End()),
 					Severity: Warning,
@@ -154,6 +156,7 @@ func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnost
 			fix = fmt.Sprintf(".%s() manages this attribute through a struct field, escapes the value and for URL attributes filters the scheme against the allowlist; SetAttributeRaw does none of that, so keep it only when these exact raw bytes are the point", method)
 		}
 		diags = append(diags, Diagnostic{
+			Check:    "setattr-key",
 			Pos:      fset.Position(keyLit.Pos()),
 			End:      fset.Position(call.End()),
 			Severity: Warning,

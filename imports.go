@@ -35,6 +35,7 @@ func (l *Linter) checkImports(fset *token.FileSet, file *ast.File) []Diagnostic 
 		correctedPath := strings.TrimSuffix(path, seg) + alt
 
 		diags = append(diags, Diagnostic{
+			Check:   "imports",
 			Pos:     fset.Position(imp.Path.Pos()),
 			End:     fset.Position(imp.Path.End()),
 			Message: fmt.Sprintf("%q is a Go reserved keyword; use %q instead", seg, alt),

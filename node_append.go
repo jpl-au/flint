@@ -65,6 +65,7 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 		// already taken the slice, so those children never reach the output.
 		if sc.tooLate {
 			diags = append(diags, Diagnostic{
+				Check:    "node-append",
 				Pos:      fset.Position(declIdent.Pos()),
 				End:      fset.Position(sc.splat.End()),
 				Severity: Warning,
@@ -102,6 +103,7 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 				message = fmt.Sprintf("build the element's children with Fluent composition instead of accumulating %q with append", name)
 			}
 			diags = append(diags, Diagnostic{
+				Check:    "node-append",
 				Pos:      fset.Position(declIdent.Pos()),
 				End:      fset.Position(sc.splat.End()),
 				Severity: Warning,
@@ -112,6 +114,7 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 		}
 
 		diags = append(diags, Diagnostic{
+			Check:    "node-append",
 			Pos:      fset.Position(declIdent.Pos()),
 			End:      fset.Position(sc.splat.End()),
 			Severity: Info,

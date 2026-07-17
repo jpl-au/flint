@@ -12,6 +12,7 @@ import (
 // JIT pre-rendering rather than safety.
 func (l *Linter) checkRawText(fset *token.FileSet, file *ast.File) []Diagnostic {
 	return l.checkLiteralArgs(fset, file, literalArgCheck{
+		name:     "raw-text",
 		names:    []string{"RawText", "RawTextf"},
 		nargs:    -1,
 		severity: Warning,

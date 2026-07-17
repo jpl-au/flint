@@ -49,6 +49,7 @@ func (l *Linter) checkBufferHint(fset *token.FileSet, file *ast.File) []Diagnost
 		if !chainHasBufferHint(call) {
 			if size := staticSize(call); size >= bufferHintThreshold {
 				diags = append(diags, Diagnostic{
+					Check:    "buffer-hint",
 					Pos:      fset.Position(call.Pos()),
 					End:      fset.Position(call.End()),
 					Severity: Info,

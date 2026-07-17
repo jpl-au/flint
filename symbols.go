@@ -44,6 +44,7 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 			}
 
 			diags = append(diags, Diagnostic{
+				Check:   "symbols",
 				Pos:     fset.Position(n.Sel.Pos()),
 				End:     fset.Position(n.Sel.End()),
 				Message: fmt.Sprintf("%s.%s does not exist", pkgName(importPath), name),
@@ -91,6 +92,7 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 							return true
 						}
 						diags = append(diags, Diagnostic{
+							Check:   "symbols",
 							Pos:     fset.Position(sel.Sel.Pos()),
 							End:     fset.Position(sel.Sel.End()),
 							Message: fmt.Sprintf("method %s does not exist on %s, returned by %s.%s", method, shortType(ret), alias, fn),
@@ -124,6 +126,7 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 			isElementPkg := pkg.Types["Element"] || pkg.Tag != ""
 			if !isElementPkg {
 				d := Diagnostic{
+					Check:    "symbols",
 					Pos:      fset.Position(sel.Sel.Pos()),
 					End:      fset.Position(sel.Sel.End()),
 					Severity: Warning,
@@ -139,6 +142,7 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 			}
 
 			diags = append(diags, Diagnostic{
+				Check:   "symbols",
 				Pos:     fset.Position(sel.Sel.Pos()),
 				End:     fset.Position(sel.Sel.End()),
 				Message: fmt.Sprintf("method %s does not exist on this element", method),

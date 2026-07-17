@@ -44,6 +44,7 @@ func (l *Linter) checkShadows(fset *token.FileSet, file *ast.File) []Diagnostic 
 		}
 		seen[id.Name] = true
 		diags = append(diags, Diagnostic{
+			Check:    "shadows",
 			Pos:      fset.Position(id.Pos()),
 			End:      fset.Position(id.End()),
 			Severity: Warning,
