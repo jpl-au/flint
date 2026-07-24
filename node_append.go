@@ -10,7 +10,13 @@ import (
 // append and then splatted into a Fluent call, where Fluent's own composition
 // expresses the same thing without the intermediate slice: variadic children or
 // .Add() for the plain case, node.When/node.Unless for a conditional child, and
-// node.Map for a loop.
+// node.Funcs for a loop, or node.Map when the loop ranges a slice.
+//
+// The plain case is Info, not Warning, and deliberately so: the accumulated
+// slice is correct and, for render-once output, the cheapest option, so the
+// alternative is a matter of style rather than a fix. Only two shapes are real
+// bugs and stay at Warning: appending after the splat from a defer or goroutine,
+// and make([]node.Node, n) with a non-zero length.
 //
 // It is deliberately conservative. It fires only when the slice is a local whose
 // element type resolves to a Fluent node (node.Node / node.Element), is grown by

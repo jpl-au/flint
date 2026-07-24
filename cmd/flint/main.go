@@ -333,7 +333,7 @@ func version() string {
 	return "flint " + flintVersion()
 }
 
-// flintVersion returns the bare flint version, for example "v0.2.2". It comes
+// flintVersion returns the bare flint version, for example "v0.5.0". It comes
 // from the embedded module build info populated by go install (a module
 // installed by tag) and falls back to "(devel)" for unstamped builds. Telemetry
 // records it alongside each run, so -version and telemetry always agree.
