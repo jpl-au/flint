@@ -119,6 +119,7 @@ severity decides whether the run fails: only **error** sets exit code `1`.
 | `static` | warning | `Static()` given something other than a string literal |
 | `raw-text` | warning | `RawText()` given a non-literal, which skips HTML escaping |
 | `setattr-key` | warning | `SetAttribute()` where a dedicated typed method exists |
+| `duplicate-attr` | warning | An attribute set twice in one chain: a repeated setter whose last value silently wins, or `SetAttribute()` duplicating a dedicated method's attribute |
 | `typed-params` | warning | A raw string where a typed constant is expected, or `Custom()` re-creating a predefined constant; the `fix:` names the exact constant when the value matches one |
 | `typed-constructors` | warning | `New()` with same-package children that a typed constructor expresses |
 | `shadows` | warning | A local name shadowing an imported Fluent package |
