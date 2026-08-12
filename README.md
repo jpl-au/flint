@@ -122,6 +122,7 @@ severity decides whether the run fails: only **error** sets exit code `1`.
 | `typed-params` | warning | A raw string where a typed constant is expected |
 | `typed-constructors` | warning | `New()` with same-package children that a typed constructor expresses |
 | `shadows` | warning | A local name shadowing an imported Fluent package |
+| `deprecated` | warning | Use of a deprecated Fluent API; the `fix:` names the replacement |
 | `node-append` | warning | Children appended from a `defer` or goroutine after the splat, or `make([]node.Node, n)` with a non-zero length |
 | `node-append` | info | A `[]node.Node` grown by append and splatted. Correct as written, and the cheapest option for render-once output |
 | `constructors` | info | `New().Method()` where a direct constructor exists |

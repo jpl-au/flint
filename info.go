@@ -157,12 +157,16 @@ func (r *Registry) Info(w io.Writer, name string, sections ...string) error {
 	if show("constructors") && len(pkg.Functions) > 0 {
 		pw.printf("\nConstructors:\n")
 		for _, fn := range sortedKeys(pkg.Functions) {
-			arity := pkg.Functions[fn]
-			if arity == -1 {
-				pw.printf("  %s(...)  variadic\n", fn)
+			var sig string
+			if arity := pkg.Functions[fn]; arity == -1 {
+				sig = fmt.Sprintf("%s(...)  variadic", fn)
 			} else {
-				pw.printf("  %s(%d)\n", fn, arity)
+				sig = fmt.Sprintf("%s(%d)", fn, arity)
 			}
+			if note, ok := pkg.DeprecatedFunctions[fn]; ok {
+				sig += "  deprecated: " + note
+			}
+			pw.printf("  %s\n", sig)
 		}
 	}
 
@@ -183,10 +187,12 @@ func (r *Registry) Info(w io.Writer, name string, sections ...string) error {
 				sig = fmt.Sprintf("%s(%d)", m, arity)
 			}
 			if tp, ok := pkg.TypedParams[m]; ok {
-				pw.printf("  %s  (enum: %s)\n", sig, tp)
-			} else {
-				pw.printf("  %s\n", sig)
+				sig += fmt.Sprintf("  (enum: %s)", tp)
 			}
+			if note, ok := pkg.DeprecatedMethods[m]; ok {
+				sig += "  deprecated: " + note
+			}
+			pw.printf("  %s\n", sig)
 		}
 	}
 
@@ -200,7 +206,11 @@ func (r *Registry) Info(w io.Writer, name string, sections ...string) error {
 	if show("vars") && len(pkg.Vars) > 0 {
 		pw.printf("\nVars:\n")
 		for _, v := range sortedKeys(pkg.Vars) {
-			pw.printf("  %s\n", v)
+			if note, ok := pkg.DeprecatedVars[v]; ok {
+				pw.printf("  %s  deprecated: %s\n", v, note)
+			} else {
+				pw.printf("  %s\n", v)
+			}
 		}
 	}
 

@@ -59,7 +59,7 @@ for Static/RawText checks only.
 ## Scoping
 
 All registry-based checks (symbols, arity, typed params, constructors,
-typed constructors) are scoped to Fluent packages only. They resolve
+typed constructors, deprecated) are scoped to Fluent packages only. They resolve
 imports and verify the receiver chain traces back to a registered
 package before firing. Non-Fluent code is never flagged.
 

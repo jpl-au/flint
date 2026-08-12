@@ -50,6 +50,23 @@ type Package struct {
 	// For enum packages these are the predefined values (Text, Email, etc.).
 	Vars map[string]bool
 
+	// DeprecatedFunctions maps a deprecated package-level function to its
+	// deprecation note, e.g. "Flash" -> "Flash is no longer supported by
+	// browsers." for the embed package. The note names the replacement, so
+	// diagnostics carry it as the fix. Every name here also appears in
+	// Functions: deprecated symbols still exist and compile.
+	DeprecatedFunctions map[string]string
+
+	// DeprecatedMethods maps a deprecated element method to its deprecation
+	// note, e.g. "Border" -> "Use CSS border properties instead." for the
+	// table package. Every name here also appears in Methods.
+	DeprecatedMethods map[string]string
+
+	// DeprecatedVars maps a deprecated package-level var to its deprecation
+	// note. For enum packages these are withdrawn options, e.g. the inputtype
+	// option "Datetime". Every name here also appears in Vars.
+	DeprecatedVars map[string]string
+
 	// TypedParams maps method names to their expected enum package name.
 	// For example: "Type" -> "inputtype" means .Type() expects an
 	// inputtype.InputType value, not a string literal. Only methods
