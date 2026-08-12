@@ -96,3 +96,106 @@ func TestCheckTypedParams(t *testing.T) {
 		})
 	}
 }
+
+func TestTypedParamFixNamesConstant(t *testing.T) {
+	l := New(FluentRegistry())
+
+	tests := []struct {
+		name    string
+		imports []string
+		body    string
+		wantFix string
+	}{
+		{
+			name:    "known value names the exact constant",
+			imports: []string{"github.com/jpl-au/fluent/html5/input"},
+			body:    `_ = input.New().Type("email")`,
+			wantFix: `Replace "email" with inputtype.Email`,
+		},
+		{
+			name:    "case-insensitive value still names the constant",
+			imports: []string{"github.com/jpl-au/fluent/html5/input"},
+			body:    `_ = input.New().Type("EMAIL")`,
+			wantFix: `Replace "EMAIL" with inputtype.Email`,
+		},
+		{
+			name:    "unknown value keeps the generic fix",
+			imports: []string{"github.com/jpl-au/fluent/html5/input"},
+			body:    `_ = input.New().Type("bogus")`,
+			wantFix: `Use a value from the inputtype package (e.g., inputtype.X) or inputtype.Custom(...)`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			diags, err := l.Source("test.go", wrapWithImports(tt.imports, tt.body))
+			if err != nil {
+				t.Fatalf("unexpected parse error: %v", err)
+			}
+			found := false
+			for _, d := range diags {
+				if d.Check == "typed-params" && strings.Contains(d.Message, "expects a typed constant") {
+					found = true
+					if d.Fix != tt.wantFix {
+						t.Errorf("fix = %q, want %q", d.Fix, tt.wantFix)
+					}
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected a typed-params diagnostic")
+			}
+		})
+	}
+}
+
+func TestCustomRecreatesConstant(t *testing.T) {
+	l := New(FluentRegistry())
+
+	t.Run("Custom with a predefined value is flagged", func(t *testing.T) {
+		src := wrapWithImports(
+			[]string{"github.com/jpl-au/fluent/html5/input", "github.com/jpl-au/fluent/html5/attr/inputtype"},
+			`_ = input.New().Type(inputtype.Custom("email"))`,
+		)
+		diags, err := l.Source("test.go", src)
+		if err != nil {
+			t.Fatalf("unexpected parse error: %v", err)
+		}
+		want := `inputtype.Custom("email") re-creates the predefined constant inputtype.Email`
+		found := false
+		for _, d := range diags {
+			if d.Message == want {
+				found = true
+				if d.Severity != Warning {
+					t.Errorf("severity = %v, want Warning", d.Severity)
+				}
+				if wantFix := `Replace inputtype.Custom("email") with inputtype.Email`; d.Fix != wantFix {
+					t.Errorf("fix = %q, want %q", d.Fix, wantFix)
+				}
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected diagnostic %q", want)
+			for _, d := range diags {
+				t.Logf("  %s: [%s] %s", d.Pos, d.Check, d.Message)
+			}
+		}
+	})
+
+	t.Run("Custom with a genuinely custom value is fine", func(t *testing.T) {
+		src := wrapWithImports(
+			[]string{"github.com/jpl-au/fluent/html5/input", "github.com/jpl-au/fluent/html5/attr/inputtype"},
+			`_ = input.New().Type(inputtype.Custom("future"))`,
+		)
+		diags, err := l.Source("test.go", src)
+		if err != nil {
+			t.Fatalf("unexpected parse error: %v", err)
+		}
+		for _, d := range diags {
+			if strings.Contains(d.Message, "re-creates") {
+				t.Errorf("unexpected diagnostic: %s", d.Message)
+			}
+		}
+	})
+}

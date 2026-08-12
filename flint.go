@@ -69,6 +69,7 @@ type Linter struct {
 	attrMethods  map[string]string
 	attrByMethod map[string]string
 	tagAliases   map[string]string
+	enumValues   map[string]map[string]string
 }
 
 // New creates a Linter with the given registry. Pass FluentRegistry()
@@ -79,8 +80,23 @@ func New(r *Registry) *Linter {
 		l.attrMethods = mergeAttrMethods(r)
 		l.attrByMethod = invertAttrMethods(l.attrMethods)
 		l.tagAliases = r.TagAliases()
+		l.enumValues = enumValuesByPackage(r)
 	}
 	return l
+}
+
+// enumValuesByPackage indexes each enum package's rendered-value-to-constant
+// map by package name, e.g. "inputtype" -> {"email": "Email", ...}, so a
+// TypedParams entry (which records only the package name) can resolve a raw
+// string to the exact constant.
+func enumValuesByPackage(r *Registry) map[string]map[string]string {
+	byPkg := make(map[string]map[string]string)
+	for path, pkg := range r.Packages {
+		if len(pkg.EnumValues) > 0 {
+			byPkg[lastSegment(path)] = pkg.EnumValues
+		}
+	}
+	return byPkg
 }
 
 // Source analyses Go source code and returns all diagnostics found.

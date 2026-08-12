@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"strconv"
+	"strings"
 )
 
 // checkTypedParams reports method calls where a string literal is passed
@@ -29,6 +31,31 @@ func (l *Linter) checkTypedParams(fset *token.FileSet, file *ast.File) []Diagnos
 		}
 
 		methodName := sel.Sel.Name
+
+		// pkg.Custom("value") re-creating a predefined constant: the enum's
+		// escape hatch is for genuinely custom values, so a value the package
+		// already names should use its constant.
+		if ident, ok := sel.X.(*ast.Ident); ok {
+			if importPath, known := imports[ident.Name]; known {
+				if methodName == "Custom" && len(call.Args) == 1 && isStringLiteral(call.Args[0]) {
+					lit := call.Args[0].(*ast.BasicLit)
+					if val, err := strconv.Unquote(lit.Value); err == nil {
+						if c, ok := enumConstant(l.registry.Packages[importPath].EnumValues, val); ok {
+							name := pkgName(importPath)
+							diags = append(diags, Diagnostic{
+								Check:    "typed-params",
+								Pos:      fset.Position(call.Pos()),
+								End:      fset.Position(call.End()),
+								Severity: Warning,
+								Message:  fmt.Sprintf("%s.Custom(%s) re-creates the predefined constant %s.%s", name, lit.Value, name, c),
+								Fix:      fmt.Sprintf("Replace %s.Custom(%s) with %s.%s", name, lit.Value, name, c),
+							})
+						}
+					}
+				}
+				return true
+			}
+		}
 
 		// Find the originating package for this method chain.
 		pkg, found := chainPackage(sel.X, imports, l.registry)
@@ -67,17 +94,40 @@ func (l *Linter) checkTypedParams(fset *token.FileSet, file *ast.File) []Diagnos
 		}
 
 		lit := arg.(*ast.BasicLit)
+		fix := fmt.Sprintf("Use a value from the %s package (e.g., %s.X) or %s.Custom(...)", enumPkg, enumPkg, enumPkg)
+		if val, err := strconv.Unquote(lit.Value); err == nil {
+			if c, ok := enumConstant(l.enumValues[enumPkg], val); ok {
+				fix = fmt.Sprintf("Replace %s with %s.%s", lit.Value, enumPkg, c)
+			}
+		}
 		diags = append(diags, Diagnostic{
 			Check:    "typed-params",
 			Pos:      fset.Position(arg.Pos()),
 			End:      fset.Position(arg.End()),
 			Severity: Warning,
 			Message:  fmt.Sprintf(".%s() expects a typed constant, not a string literal %s", methodName, lit.Value),
-			Fix:      fmt.Sprintf("Use a value from the %s package (e.g., %s.X) or %s.Custom(...)", enumPkg, enumPkg, enumPkg),
+			Fix:      fix,
 		})
 
 		return true
 	})
 
 	return diags
+}
+
+// enumConstant resolves a raw string to the enum constant that renders it: an
+// exact match on the rendered value first, then a case-insensitive one.
+// Charset names and similar are case-insensitive in HTML; values whose case is
+// significant, like ol's "a" and "A" numbering types, are distinct options and
+// so always hit the exact match first.
+func enumConstant(values map[string]string, raw string) (string, bool) {
+	if c, ok := values[raw]; ok {
+		return c, true
+	}
+	for v, c := range values {
+		if strings.EqualFold(v, raw) {
+			return c, true
+		}
+	}
+	return "", false
 }

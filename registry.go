@@ -67,6 +67,12 @@ type Package struct {
 	// option "Datetime". Every name here also appears in Vars.
 	DeprecatedVars map[string]string
 
+	// EnumValues maps a rendered HTML value to the Go constant that produces
+	// it, e.g. "email" -> "Email" for the inputtype package. Populated only
+	// for enum packages. The typed-params check uses it to name the exact
+	// constant a raw string should become.
+	EnumValues map[string]string
+
 	// TypedParams maps method names to their expected enum package name.
 	// For example: "Type" -> "inputtype" means .Type() expects an
 	// inputtype.InputType value, not a string literal. Only methods
