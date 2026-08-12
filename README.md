@@ -19,91 +19,14 @@ flint views/home.go      # Check a single file
 cat file.go | flint -    # Read from stdin
 ```
 
-### Element info
+Exit codes: `0` clean or advisory-only, `1` errors found, `2` usage or I/O error. Run `flint -h` for the full flag reference.
 
-Use `-info` to inspect the registry entry for any fluent element. This displays its types, constructors, typed constructors, methods (with any typed parameters), attribute mappings, and vars.
-
-```bash
-flint -info div          # Show everything about <div>
-flint -info input        # Show everything about <input>
-flint -info ol           # Show everything about <ol>
-```
-
-For a multi-element package (svg, whose single import path hosts many shapes),
-querying the package lists its elements, a bare element name resolves within
-it, and the `package:element` form disambiguates an element whose name is
-shadowed by a package of its own (the svg `text` shape, versus the text node
-package).
+Beyond linting, `-info` prints an element's API surface straight from the registry - types, constructors, methods, typed parameters, attribute mappings - so you can look up what an element offers without leaving the terminal. Deprecated entries carry their deprecation note.
 
 ```bash
-flint -info svg          # The shared svg surface, plus its elements
-flint -info rect         # The rect shape within the svg package
-flint -info svg:text     # The svg text shape, not the text node package
+flint -info div
+flint -info input ctors attrs
 ```
-
-Pass one or more section names after the element to restrict the output. Each section accepts a long form and (where useful) a short form:
-
-| Long form | Short form |
-|-----------|------------|
-| `types` | |
-| `constructors` | `ctors` |
-| `typed-constructors` | `typed` |
-| `methods` | |
-| `attributes` | `attrs` |
-| `vars` | |
-| `elements` | |
-
-```bash
-flint -info div methods         # Just the methods
-flint -info input ctors attrs   # Constructors and attribute mappings
-flint -info ol typed            # Typed constructors only
-```
-
-### Flags
-
-| Flag | Description |
-|------|-------------|
-| `-include-tests` | Include `_test.go` files (excluded by default) |
-| `-json` | Emit diagnostics as JSON, one object per line, with no summary; exit codes are unchanged |
-| `-no-registry` | Disable registry-backed symbol validation; the literal Static/RawText and SetAttribute-chain checks still run |
-| `-info <element> [section]...` | Show registry info for an element and exit |
-| `-telemetry <value>` | Set the telemetry mode (`off`, `local`, `on`) or show it (`status`), then exit |
-| `-version` | Print flint version and exit |
-
-Exit codes: `0` clean or advisory-only, `1` errors found, `2` usage or I/O error.
-
-### Severity levels
-
-Each diagnostic carries a severity:
-
-- **error** - incorrect code that will not compile (a missing symbol, wrong
-  arity, a chain that cannot compile). Sets exit code `1`.
-- **warning** - code that compiles but carries a real reason to change: a
-  security or correctness hazard, a silent bug, a duplicate attribute, or a
-  typed API sidestepped. Reported, but does not fail the run.
-- **info** - advisory. The code is correct and fine as written; an optional
-  alternative exists. Reported, never fails the run.
-
-### Telemetry
-
-Telemetry is opt-in and **off by default**. Nothing is collected, and nothing
-leaves your machine, until you turn it on.
-
-```bash
-flint -telemetry status   # Show the current mode
-flint -telemetry local    # Record runs to local .tlf files
-flint -telemetry off      # Stop collecting
-```
-
-When enabled, an ordinary lint run records its diagnostics and attribute usage
-to a single `<run-id>.tlf` file beneath the user cache directory (see
-`os.UserCacheDir`). The file is greppable text with three regions, `[meta]`,
-`[issues]` and `[attrs]`. The chosen mode persists beneath the user config
-directory (see `os.UserConfigDir`), so wiping the cache does not lose the
-choice.
-
-The `on` mode reserves the "collect and upload" meaning for when uploading
-exists. Until then it behaves exactly like `local`: everything stays on disk.
 
 ## What it checks
 
@@ -121,6 +44,7 @@ severity decides whether the run fails: only **error** sets exit code `1`.
 | `raw-text` | warning | `RawText()` given a non-literal, which skips HTML escaping |
 | `setattr-key` | warning | `SetAttribute()` where a dedicated typed method exists |
 | `duplicate-attr` | warning | An attribute set twice in one chain: a repeated setter whose last value silently wins, or `SetAttribute()` duplicating a dedicated method's attribute |
+| `url-scheme` | warning | A URL literal whose scheme fluent's runtime filter rejects (`javascript:`, `data:`, ...); it renders as the `#fluent-unsafe-url` sentinel |
 | `typed-params` | warning | A raw string where a typed constant is expected, or `Custom()` re-creating a predefined constant; the `fix:` names the exact constant when the value matches one |
 | `typed-constructors` | warning | `New()` with same-package children that a typed constructor expresses |
 | `shadows` | warning | A local name shadowing an imported Fluent package |
@@ -131,7 +55,29 @@ severity decides whether the run fails: only **error** sets exit code `1`.
 | `buffer-hint` | info | An element already holding 4 KiB or more of static content, which could carry `.BufferHint(n)` |
 
 Each diagnostic carries a `fix:` line describing the correction for the code it
-found, and `-info <element>` shows an element's API surface from the registry.
+found.
+
+## Severity levels
+
+- **error** - incorrect code that will not compile (a missing symbol, wrong
+  arity, a chain that cannot compile). Sets exit code `1`.
+- **warning** - code that compiles but carries a real reason to change: a
+  security or correctness hazard, a silent bug, a duplicate attribute, or a
+  typed API sidestepped. Reported, but does not fail the run.
+- **info** - advisory. The code is correct and fine as written; an optional
+  alternative exists. Reported, never fails the run.
+
+## Telemetry
+
+Opt-in and **off by default**: nothing is collected, and nothing leaves your
+machine, until you turn it on. When enabled, runs are recorded as greppable
+text files beneath your user cache directory.
+
+```bash
+flint -telemetry status   # Show the current mode
+flint -telemetry local    # Record runs to local .tlf files
+flint -telemetry off      # Stop collecting
+```
 
 ## Library usage
 

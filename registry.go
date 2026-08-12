@@ -91,6 +91,17 @@ type Package struct {
 	// them: calling one twice in a chain is legitimate.
 	AccumulatingMethods map[string]bool
 
+	// URLFunctions maps a package-level function to the index of its URL
+	// parameter, whose value the runtime passes through fluent's scheme
+	// filter (node.FilterURL): http, https, mailto, tel, sms and relative
+	// URLs survive; anything else renders as the #fluent-unsafe-url
+	// sentinel. For example embed.Flash's src is index 0.
+	URLFunctions map[string]int
+
+	// URLMethods is URLFunctions for the element's methods, e.g.
+	// "Href" -> 0 on the a element.
+	URLMethods map[string]int
+
 	// TypedConstructors maps constructor names to the child package
 	// they accept. For example: "Items" -> "li" means Items() accepts
 	// ...*li.Element. Used to suggest typed constructors when New() is

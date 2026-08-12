@@ -7,8 +7,9 @@
 //
 // The generated registry (see FluentRegistry) also serves as a
 // queryable catalogue of every element's constructors, methods, typed
-// parameters, attribute mappings, and typed constructors. The CLI
-// exposes this via the -info flag.
+// parameters, attribute mappings, typed constructors, deprecation
+// notes, enum values, and URL-filtered parameters. The CLI exposes
+// this via the -info flag.
 package flint
 
 import (
@@ -126,6 +127,7 @@ func (l *Linter) Source(filename string, src []byte) ([]Diagnostic, error) {
 	diags = append(diags, l.checkSetAttrChain(fset, file)...)
 	diags = append(diags, l.checkSetAttrKey(fset, file)...)
 	diags = append(diags, l.checkDuplicateAttrs(fset, file)...)
+	diags = append(diags, l.checkURLScheme(fset, file)...)
 	diags = append(diags, l.checkTypedParams(fset, file)...)
 	diags = append(diags, l.checkConstructors(fset, file)...)
 	diags = append(diags, l.checkTypedConstructors(fset, file)...)

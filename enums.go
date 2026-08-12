@@ -11,6 +11,9 @@ import (
 // checkTypedParams reports method calls where a string literal is passed
 // to a method that expects a typed enum constant. For example,
 // input.New().Type("email") should be input.New().Type(inputtype.Email).
+// When the literal matches a predefined value the fix names the exact
+// constant. It also reports an enum package's Custom() escape hatch
+// re-creating a predefined constant, e.g. inputtype.Custom("email").
 func (l *Linter) checkTypedParams(fset *token.FileSet, file *ast.File) []Diagnostic {
 	if l.registry == nil {
 		return nil
