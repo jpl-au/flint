@@ -37,6 +37,7 @@
 //
 //	-no-registry        Disable registry-backed validation (literal and SetAttribute-chain checks still run)
 //	-include-tests      Include _test.go files in the analysis
+//	-json               Emit diagnostics as JSON, one object per line, and no summary
 //	-info <element>     Show registry info for an element and exit
 //	-telemetry <value>  Set telemetry mode (off|local|on) or show it (status), then exit
 //	-version            Print flint version and exit
@@ -58,6 +59,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -74,6 +76,7 @@ import (
 func main() {
 	noRegistry := flag.Bool("no-registry", false, "Disable symbol validation")
 	includeTests := flag.Bool("include-tests", false, "Include _test.go files")
+	jsonOut := flag.Bool("json", false, "Emit diagnostics as JSON, one object per line")
 	infoElement := flag.String("info", "", "Show registry info for an element (e.g. -info div, or -info svg:rect for a shape within a package)")
 	telemetryMode := flag.String("telemetry", "", "Set telemetry mode (off|local|on) or show it (status)")
 	showVersion := flag.Bool("version", false, "Print flint version and exit")
@@ -140,6 +143,11 @@ func main() {
 		l = flint.New(flint.FluentRegistry())
 	}
 
+	var p printer = textPrinter{out: os.Stdout, err: os.Stderr}
+	if *jsonOut {
+		p = jsonPrinter{enc: json.NewEncoder(os.Stdout)}
+	}
+
 	args := flag.Args()
 
 	// A nil sink when telemetry is off, so recording is a no-op and no run is
@@ -159,7 +167,7 @@ func main() {
 				continue
 			}
 			stdinUsed = true
-			e, w, err := checkStdin(l, sink)
+			e, w, err := checkStdin(l, sink, p)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "flint: %v\n", err)
 				hadErrors = true
@@ -177,7 +185,7 @@ func main() {
 			continue
 		}
 		for _, path := range files {
-			e, w, err := checkFile(l, sink, path)
+			e, w, err := checkFile(l, sink, p, path)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "flint: %v\n", err)
 				hadErrors = true
@@ -194,13 +202,83 @@ func main() {
 	if hadErrors {
 		os.Exit(2)
 	}
-	if errors+warnings > 0 {
-		printSummary(errors, warnings)
-	}
+	p.summary(errors, warnings)
 	if errors > 0 {
 		os.Exit(1)
 	}
 }
+
+// printer writes diagnostics in one output format. The check loop hands it
+// every diagnostic as it is found, and the run totals at the end.
+type printer interface {
+	diagnostic(d flint.Diagnostic)
+	summary(errors, warnings int)
+}
+
+// textPrinter writes the human-readable format: one line per diagnostic with
+// an indented fix line on out, and a run summary on err.
+type textPrinter struct {
+	out, err io.Writer
+}
+
+func (p textPrinter) diagnostic(d flint.Diagnostic) {
+	fmt.Fprintf(p.out, "%s:%d:%d: %s: %s\n", d.Pos.Filename, d.Pos.Line, d.Pos.Column, d.Severity, d.Message)
+	if d.Fix != "" {
+		fmt.Fprintf(p.out, "  fix: %s\n", d.Fix)
+	}
+}
+
+func (p textPrinter) summary(errors, warnings int) {
+	if errors+warnings == 0 {
+		return
+	}
+	var parts []string
+	if errors > 0 {
+		parts = append(parts, fmt.Sprintf("%d error(s)", errors))
+	}
+	if warnings > 0 {
+		parts = append(parts, fmt.Sprintf("%d warning(s)", warnings))
+	}
+	fmt.Fprintf(p.err, "\n%s found\n", strings.Join(parts, " and "))
+}
+
+// jsonPrinter writes one JSON object per diagnostic per line, for editors and
+// CI tooling. It writes no summary: the stream is the whole output and the
+// exit code carries the verdict.
+type jsonPrinter struct {
+	enc *json.Encoder
+}
+
+// jsonDiagnostic is the wire form of one diagnostic. Positions are 1-based;
+// endLine/endColumn point one past the flagged expression, matching
+// go/token.Position semantics.
+type jsonDiagnostic struct {
+	File      string `json:"file"`
+	Line      int    `json:"line"`
+	Column    int    `json:"column"`
+	EndLine   int    `json:"endLine"`
+	EndColumn int    `json:"endColumn"`
+	Severity  string `json:"severity"`
+	Check     string `json:"check"`
+	Message   string `json:"message"`
+	Fix       string `json:"fix,omitempty"`
+}
+
+func (p jsonPrinter) diagnostic(d flint.Diagnostic) {
+	p.enc.Encode(jsonDiagnostic{
+		File:      d.Pos.Filename,
+		Line:      d.Pos.Line,
+		Column:    d.Pos.Column,
+		EndLine:   d.End.Line,
+		EndColumn: d.End.Column,
+		Severity:  d.Severity.String(),
+		Check:     d.Check,
+		Message:   d.Message,
+		Fix:       d.Fix,
+	})
+}
+
+func (p jsonPrinter) summary(int, int) {}
 
 // resolvePattern expands a single pattern into file paths.
 func resolvePattern(pattern string, includeTests bool) ([]string, error) {
@@ -268,27 +346,27 @@ func findGoFiles(root string, recursive, includeTests bool) ([]string, error) {
 }
 
 // checkFile reads a file and runs all lint checks against it.
-func checkFile(l *flint.Linter, sink *telemetrySink, path string) (int, int, error) {
+func checkFile(l *flint.Linter, sink *telemetrySink, p printer, path string) (int, int, error) {
 	src, err := os.ReadFile(path)
 	if err != nil {
 		return 0, 0, err
 	}
-	return check(l, sink, path, src)
+	return check(l, sink, p, path, src)
 }
 
 // checkStdin reads source code from standard input and runs all lint checks.
-func checkStdin(l *flint.Linter, sink *telemetrySink) (int, int, error) {
+func checkStdin(l *flint.Linter, sink *telemetrySink, p printer) (int, int, error) {
 	src, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return 0, 0, fmt.Errorf("reading stdin: %w", err)
 	}
-	return check(l, sink, "<stdin>", src)
+	return check(l, sink, p, "<stdin>", src)
 }
 
-// check runs all lint checks against src and prints diagnostics to stdout,
+// check runs all lint checks against src and prints diagnostics through p,
 // recording them to sink when telemetry is enabled. Returns the number of
 // errors and warnings found.
-func check(l *flint.Linter, sink *telemetrySink, filename string, src []byte) (int, int, error) {
+func check(l *flint.Linter, sink *telemetrySink, p printer, filename string, src []byte) (int, int, error) {
 	diags, err := l.Source(filename, src)
 	if err != nil {
 		return 0, 0, fmt.Errorf("parsing %s: %w", filename, err)
@@ -296,10 +374,7 @@ func check(l *flint.Linter, sink *telemetrySink, filename string, src []byte) (i
 
 	var errors, warnings int
 	for _, d := range diags {
-		fmt.Printf("%s:%d:%d: %s: %s\n", d.Pos.Filename, d.Pos.Line, d.Pos.Column, d.Severity, d.Message)
-		if d.Fix != "" {
-			fmt.Printf("  fix: %s\n", d.Fix)
-		}
+		p.diagnostic(d)
 		switch d.Severity {
 		case flint.Warning:
 			warnings++
@@ -313,18 +388,6 @@ func check(l *flint.Linter, sink *telemetrySink, filename string, src []byte) (i
 	sink.record(l, filename, src, diags)
 
 	return errors, warnings, nil
-}
-
-// printSummary writes a summary line to stderr.
-func printSummary(errors, warnings int) {
-	var parts []string
-	if errors > 0 {
-		parts = append(parts, fmt.Sprintf("%d error(s)", errors))
-	}
-	if warnings > 0 {
-		parts = append(parts, fmt.Sprintf("%d warning(s)", warnings))
-	}
-	fmt.Fprintf(os.Stderr, "\n%s found\n", strings.Join(parts, " and "))
 }
 
 // version returns a string of the form "flint <version>" suitable

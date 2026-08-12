@@ -64,6 +64,7 @@ flint -info ol typed            # Typed constructors only
 | Flag | Description |
 |------|-------------|
 | `-include-tests` | Include `_test.go` files (excluded by default) |
+| `-json` | Emit diagnostics as JSON, one object per line, with no summary; exit codes are unchanged |
 | `-no-registry` | Disable registry-backed symbol validation; the literal Static/RawText and SetAttribute-chain checks still run |
 | `-info <element> [section]...` | Show registry info for an element and exit |
 | `-telemetry <value>` | Set the telemetry mode (`off`, `local`, `on`) or show it (`status`), then exit |

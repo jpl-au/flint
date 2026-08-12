@@ -1,10 +1,15 @@
 package main
 
 import (
+	"encoding/json"
+	"go/token"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
+
+	"github.com/jpl-au/flint"
 )
 
 // writeTree creates a directory tree of empty files under root.
@@ -105,4 +110,51 @@ func TestFindGoFiles(t *testing.T) {
 			t.Errorf("got %v, want [c.go]", got)
 		}
 	})
+}
+
+func TestJSONPrinter(t *testing.T) {
+	var b strings.Builder
+	p := jsonPrinter{enc: json.NewEncoder(&b)}
+	p.diagnostic(flint.Diagnostic{
+		Check:    "deprecated",
+		Pos:      token.Position{Filename: "views/home.go", Line: 12, Column: 8},
+		End:      token.Position{Filename: "views/home.go", Line: 12, Column: 13},
+		Severity: flint.Warning,
+		Message:  "embed.Flash is deprecated",
+		Fix:      "Flash is no longer supported by browsers.",
+	})
+	p.summary(0, 1)
+
+	got := strings.TrimSpace(b.String())
+	want := `{"file":"views/home.go","line":12,"column":8,"endLine":12,"endColumn":13,"severity":"warning","check":"deprecated","message":"embed.Flash is deprecated","fix":"Flash is no longer supported by browsers."}`
+	if got != want {
+		t.Errorf("got %s\nwant %s", got, want)
+	}
+	if strings.Contains(got, "\n") {
+		t.Errorf("summary should write nothing in JSON mode, got %q", b.String())
+	}
+}
+
+func TestJSONPrinterOmitsEmptyFix(t *testing.T) {
+	var b strings.Builder
+	p := jsonPrinter{enc: json.NewEncoder(&b)}
+	p.diagnostic(flint.Diagnostic{Check: "symbols", Message: "x does not exist"})
+	if strings.Contains(b.String(), `"fix"`) {
+		t.Errorf("empty fix should be omitted, got %s", b.String())
+	}
+}
+
+func TestTextPrinterSummary(t *testing.T) {
+	var out, errw strings.Builder
+	p := textPrinter{out: &out, err: &errw}
+
+	p.summary(0, 0)
+	if errw.Len() != 0 {
+		t.Errorf("clean run should print no summary, got %q", errw.String())
+	}
+
+	p.summary(1, 2)
+	if got, want := errw.String(), "\n1 error(s) and 2 warning(s) found\n"; got != want {
+		t.Errorf("summary = %q, want %q", got, want)
+	}
 }
