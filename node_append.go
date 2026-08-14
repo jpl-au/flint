@@ -103,7 +103,8 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 		// idiomatic alternative rather than a fix. Report that as advisory (Info),
 		// not a defect.
 		if makeWithLength(stmt) {
-			fix += fmt.Sprintf("; note: make([]node.Node, n) seeds %q with n nil entries before the appended children - use make([]node.Node, 0, n) to reserve capacity", name)
+			fix = "compose children with Fluent instead of a []node.Node grown by append: " + fix +
+				fmt.Sprintf("; note: make([]node.Node, n) seeds %q with n nil entries before the appended children - use make([]node.Node, 0, n) to reserve capacity", name)
 			message := fmt.Sprintf("compose these children with Fluent instead of accumulating %q with append", name)
 			if intoElement {
 				message = fmt.Sprintf("build the element's children with Fluent composition instead of accumulating %q with append", name)
@@ -125,7 +126,7 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 			End:      fset.Position(sc.splat.End()),
 			Severity: Info,
 			Message:  fmt.Sprintf("%q is assembled with append; Fluent can compose these children directly", name),
-			Fix:      fix,
+			Fix:      "the append-and-splat form you have is correct and, for render-once output, the cheapest; these are readability alternatives: " + fix,
 		})
 	}
 

@@ -136,8 +136,10 @@ func isNegated(cond ast.Expr) bool {
 	return ok && u.Op == token.NOT
 }
 
-// nodeAppendFix builds the fix advice, naming only the idioms the code's shape
-// actually calls for.
+// nodeAppendFix lists the Fluent idioms the code's shape actually calls for.
+// The caller supplies the framing, because the two diagnostics mean different
+// things: the nil-seeding case is a real slip to correct, while the ordinary
+// case is already the cheapest form and the idioms are only alternatives.
 func nodeAppendFix(c appendClass, intoElement bool) string {
 	var options []string
 	if c.when {
@@ -149,21 +151,29 @@ func nodeAppendFix(c appendClass, intoElement bool) string {
 	if c.both {
 		options = append(options, "node.Condition(cond).True(child).False(child) for an if/else")
 	}
+	// The deferred forms carry a cost the others do not, so the note goes on
+	// them rather than on the advice as a whole: node.Map wraps node.Funcs, and
+	// both park the loop in a component and closure that render later. The
+	// conditional idioms and passing children straight to the constructor add
+	// nothing.
+	const deferred = " (defers the loop into a component and closure, so it allocates more than the slice you already have)"
 	if c.loop {
 		if c.rangeLoop {
-			options = append(options, "node.Funcs(func() []node.Node { ... }) to build the children yourself, or node.Map(slice, fn) for a per-element slice mapping (Go generics)")
+			// node.Funcs first and node.Map second: Map wraps Funcs and costs the
+			// same, so it is the generic convenience rather than the faster path.
+			options = append(options, "node.Funcs(func() []node.Node { ... }) to build the children yourself, or node.Map(slice, fn) for a generic per-element mapping"+deferred)
 		} else {
 			// No range means no slice to map over, so node.Map cannot express it.
-			options = append(options, "node.Funcs(func() []node.Node { ... }) to build the children yourself")
+			options = append(options, "node.Funcs(func() []node.Node { ... }) to build the children yourself"+deferred)
 		}
 	}
 	if c.branch {
-		options = append(options, "node.Funcs(func() []node.Node { ... }) for branching that builds a slice")
+		options = append(options, "node.Funcs(func() []node.Node { ... }) for branching that builds a slice"+deferred)
 	}
 	if intoElement {
 		options = append(options, "passing children directly to the constructor or via .Add(...)")
 	} else {
 		options = append(options, "composing the children with Fluent rather than assembling a []node.Node by hand")
 	}
-	return "compose children with Fluent instead of a []node.Node grown by append: " + strings.Join(options, "; ")
+	return strings.Join(options, "; ")
 }
