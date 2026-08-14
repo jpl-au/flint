@@ -108,6 +108,16 @@ type Package struct {
 	// called with children that all come from a single child package.
 	TypedConstructors map[string]string
 
+	// Constructors describes what each package-level constructor does for you,
+	// in terms of the chained calls it makes unnecessary. It is what lets the
+	// constructor check see past the method name: a
+	// link.New().Rel(rel.Stylesheet).Href(u) chain names no constructor at all,
+	// yet what it sets identifies link.Stylesheet exactly. Only constructors a
+	// chain could be rewritten to appear - New is absent, as are the ones that
+	// derive a value no chain of setters produces (area.Rect builds its coords
+	// with fmt.Sprintf), so Functions remains the full list.
+	Constructors map[string]Constructor
+
 	// FuncReturns maps a package function to the type it returns, when that
 	// type is not the package's own element. Values are import-path-qualified
 	// type names (e.g. "github.com/jpl-au/fluent/node.Node"). The chained-method
@@ -132,6 +142,36 @@ type Package struct {
 	// flint -info uses it to resolve and present a specific element within the
 	// package.
 	Elements map[string]Package
+}
+
+// Constructor describes one package-level constructor by the chained calls it
+// replaces, so the constructor check can recognise a New() chain doing the same
+// work by hand.
+type Constructor struct {
+	// Sets lists the element methods the constructor applies for you, sorted.
+	// For link.Stylesheet these are Href and Rel; for a.Link, Href and Text.
+	Sets []string
+
+	// Pins maps a method in Sets to the value the constructor fixes it to,
+	// written as it appears in Go source: "Rel" -> "rel.Stylesheet" for
+	// link.Stylesheet, "Type" -> `"module"` for script.Module. It is what tells
+	// otherwise identical constructors apart. Methods absent from the map take
+	// whatever the caller passes.
+	Pins map[string]string
+
+	// Prefixes maps a method in Sets to the literal the constructor puts in
+	// front of its argument, e.g. "Href" -> "mailto:" for a.MailTo. It
+	// distinguishes the scheme-pinned anchor constructors from a.Link, which
+	// passes the href through untouched.
+	Prefixes map[string]string
+
+	// Content lists the methods in Sets that add child nodes rather than set an
+	// attribute (Text, RawText, Static, Textf, RawTextf).
+	Content []string
+
+	// Nodes reports whether the constructor ends in a ...node.Node parameter,
+	// so a New(children...) chain can still collapse into it.
+	Nodes bool
 }
 
 // typeMethods returns the method set of a path-qualified type, for example

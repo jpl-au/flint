@@ -51,7 +51,7 @@ severity decides whether the run fails: only **error** sets exit code `1`.
 | `deprecated` | warning | Use of a deprecated Fluent API; the `fix:` names the replacement |
 | `node-append` | warning | Children appended from a `defer` or goroutine after the splat, or `make([]node.Node, n)` with a non-zero length |
 | `node-append` | info | A `[]node.Node` grown by append and splatted. Correct as written, and the cheapest option for render-once output |
-| `constructors` | info | `New().Method()` where a direct constructor exists |
+| `constructors` | info | A `New()` chain a package-level constructor would build in one call, matched on what the chain sets rather than on method names |
 | `buffer-hint` | info | An element already holding 4 KiB or more of static content, which could carry `.BufferHint(n)` |
 
 Each diagnostic carries a `fix:` line describing the correction for the code it
@@ -102,7 +102,7 @@ for _, d := range diags {
 
 Flint parses Go source using `go/ast` and walks the AST looking for patterns that indicate misuse of the Fluent API. It has no dependency on Fluent itself.
 
-A generated registry (`FluentRegistry()`) provides the complete API surface of every Fluent package - functions, methods, types, variables, typed parameters, and attribute mappings. The registry is generated from the same YAML specifications that produce the Fluent element packages, so it stays in sync automatically.
+A generated registry (`FluentRegistry()`) provides the complete API surface of every Fluent package - functions, methods, types, variables, typed parameters, attribute mappings, and what each constructor already sets. The registry is generated from the same YAML specifications that produce the Fluent element packages, so it stays in sync automatically.
 
 Generated files (containing `// Code generated` and `DO NOT EDIT`) are skipped automatically.
 
