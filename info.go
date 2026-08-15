@@ -85,10 +85,15 @@ func (r *Registry) Info(w io.Writer, name string, sections ...string) error {
 			pkg = p
 			// A multi-element package (svg) usually has a root element whose tag
 			// equals the package name; show that element's own surface so its
-			// specific methods appear, and list the children below.
+			// specific methods appear, and list the children below. Types and
+			// Vars are recorded at package level - the exported Element type
+			// and the render-plumbing constants belong to the import path, not
+			// to one element - so they carry over into the root's view.
 			children = p.Elements
 			for tag, el := range p.Elements {
 				if strings.EqualFold(tag, name) {
+					el.Types = p.Types
+					el.Vars = p.Vars
 					pkg = el
 					label = tag
 					break
