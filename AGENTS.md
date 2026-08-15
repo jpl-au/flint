@@ -11,7 +11,15 @@ flint ./...
 Severities: an **error** will not compile and must be fixed; a
 **warning** compiles but carries a real reason to change; **info** is
 advisory and safe to leave. Exit codes: `0` clean or advisory-only,
-`1` errors found, `2` usage or I/O error.
+`1` errors found, `2` usage or I/O error. Every diagnostic prints its
+stable check name (`warning[setattr-key]: ...`).
+
+A deliberate pattern flint flags can be suppressed per site with a
+reasoned directive naming the check:
+`//flint:allow raw-text trusted server-owned markup`. On its own line
+it covers the next line; trailing, it covers its own line. The reason
+is mandatory. Do not add a directive to silence a diagnostic you have
+not judged - fix the code instead.
 
 Pass `-json` for machine-readable output: one JSON object per
 diagnostic per line, carrying the file, positions, severity, check

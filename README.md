@@ -30,8 +30,7 @@ flint -info input ctors attrs
 
 ## What it checks
 
-The first column is the stable check name that appears in telemetry. The
-severity decides whether the run fails: only **error** sets exit code `1`.
+The first column is the stable check name, printed with every diagnostic (`warning[setattr-key]: ...`) and carried in `-json` output and telemetry. The severity decides whether the run fails: only **error** sets exit code `1`.
 
 | Check | Severity | Catches |
 |-------|----------|---------|
@@ -40,14 +39,16 @@ severity decides whether the run fails: only **error** sets exit code `1`.
 | `method-arity` | error | Wrong argument count on a method call |
 | `imports` | error | A Go reserved keyword as an import path, in place of Fluent's alternative |
 | `setattr-chain` | error | Chaining after `SetAttribute()`, which does not return the element |
-| `static` | warning | `Static()` given something other than a string literal |
+| `static` | warning | `Static()` given something other than a string literal. The paired-constructor idiom is exempt: a function whose name ends in `Static` forwarding its own parameter is the contract, not a violation |
 | `raw-text` | warning | `RawText()` given a non-literal, which skips HTML escaping |
 | `setattr-key` | warning | `SetAttribute()` where a dedicated typed method exists |
-| `duplicate-attr` | warning | An attribute set twice in one chain: a repeated setter whose last value silently wins, or `SetAttribute()` duplicating a dedicated method's attribute |
+| `duplicate-attr` | warning | An attribute set twice: a repeated setter whose last value silently wins, or `SetAttribute()` duplicating an attribute a dedicated method - or the chain's constructor, `input.Text` pins `type="text"` - already set, in the same chain or on a later line |
+| `allow` | warning | A malformed `//flint:allow` directive, which would silently suppress nothing |
 | `url-scheme` | warning | A URL literal whose scheme fluent's runtime filter rejects (`javascript:`, `data:`, ...); it renders as the `#fluent-unsafe-url` sentinel |
 | `typed-params` | warning | A raw string where a typed constant is expected, or `Custom()` re-creating a predefined constant; the `fix:` names the exact constant when the value matches one |
 | `typed-constructors` | warning | `New()` with same-package children that a typed constructor expresses |
 | `shadows` | warning | A local name shadowing an imported Fluent package |
+| `nesting` | warning | A child from the same element package inside `a`, `button`, `form` or `label`, which HTML forbids nesting in themselves; `a.New(a.Static("Back"))` builds an anchor inside an anchor, and browsers unnest it |
 | `deprecated` | warning | Use of a deprecated Fluent API; the `fix:` names the replacement |
 | `node-append` | warning | Children appended from a `defer` or goroutine after the splat, or `make([]node.Node, n)` with a non-zero length |
 | `node-append` | info | A `[]node.Node` grown by append and splatted. Correct as written, and the cheapest option for render-once output |
@@ -66,6 +67,17 @@ found.
   typed API sidestepped. Reported, but does not fail the run.
 - **info** - advisory. The code is correct and fine as written; an optional
   alternative exists. Reported, never fails the run.
+
+## Suppressing a diagnostic
+
+Some flagged patterns are deliberate - a `RawText` block whose contract is trusted, server-owned markup, say. Record that judgement where the code is:
+
+```go
+//flint:allow raw-text the ErrorStatic contract is trusted server-owned markup
+return div.New(text.RawText(markup))
+```
+
+The check name is required and is the one printed with the diagnostic; the reason is required too, so the next reader inherits the judgement instead of re-auditing the line. A directive on its own line covers the next line; a trailing directive covers its own line. There is deliberately no file- or project-wide form: a suppression is a per-site decision.
 
 ## Telemetry
 

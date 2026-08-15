@@ -138,6 +138,9 @@ func (l *Linter) Source(filename string, src []byte) ([]Diagnostic, error) {
 	diags = append(diags, l.checkNodeAppend(fset, file)...)
 	diags = append(diags, l.checkBufferHint(fset, file)...)
 	diags = append(diags, l.checkShadows(fset, file)...)
+	diags = append(diags, l.checkNesting(fset, file)...)
+
+	diags = applyAllowDirectives(fset, file, src, diags)
 
 	sort.Slice(diags, func(i, j int) bool {
 		if diags[i].Pos.Line != diags[j].Pos.Line {
