@@ -51,6 +51,46 @@ func f() {
 			want:    `SetAttribute("class", ...) duplicates the .Class() call earlier in this chain; both render, duplicating the class attribute`,
 			wantFix: `Fold the value into the .Class() call; browsers keep only the first of a duplicated attribute`,
 		},
+		{
+			name: "SetAttribute duplicating what the chain's constructor set",
+			src: `package p
+
+import "github.com/jpl-au/fluent/html5/input"
+
+func f() {
+	input.Text("e", "").SetAttribute("type", "email")
+}`,
+			want:    `SetAttribute("type", ...) duplicates the type attribute input.Text already sets; both render, and browsers keep the first, so this value never takes effect`,
+			wantFix: `Browsers keep only the first of a duplicated attribute; choose a constructor that sets the type you want, or set it once through .Type()`,
+		},
+		{
+			name: "split statements: SetAttribute duplicating the local's constructor",
+			src: `package p
+
+import "github.com/jpl-au/fluent/html5/input"
+
+func f(inputType string) {
+	inp := input.Text("e", "")
+	inp.SetAttribute("type", inputType)
+	_ = inp
+}`,
+			want:    `SetAttribute("type", ...) duplicates the type attribute input.Text already sets; both render, and browsers keep the first, so this value never takes effect`,
+			wantFix: `Browsers keep only the first of a duplicated attribute; choose a constructor that sets the type you want, or set it once through .Type()`,
+		},
+		{
+			name: "split statements: SetAttribute duplicating a method in the local's chain",
+			src: `package p
+
+import "github.com/jpl-au/fluent/html5/input"
+
+func f() {
+	box := input.New().Name("q").ID("q")
+	box.SetAttribute("id", "search")
+	_ = box
+}`,
+			want:    `SetAttribute("id", ...) duplicates the id attribute .ID() already set (line 6); both render, and browsers keep the first, so this value never takes effect`,
+			wantFix: `Fold the value into the .ID() call; browsers keep only the first of a duplicated attribute`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -107,6 +147,30 @@ import "github.com/jpl-au/fluent/html5/div"
 
 func f() {
 	_ = div.New().ID("a").Title("t").Lang("en")
+}`,
+		},
+		{
+			name: "SetAttribute on an attribute the constructor does not set",
+			src: `package p
+
+import "github.com/jpl-au/fluent/html5/input"
+
+func f() {
+	inp := input.Text("e", "")
+	inp.SetAttribute("placeholder", "Email")
+	_ = inp
+}`,
+		},
+		{
+			name: "content constructors set no attributes",
+			src: `package p
+
+import "github.com/jpl-au/fluent/html5/div"
+
+func f() {
+	d := div.Text("hello")
+	d.SetAttribute("lang", "en")
+	_ = d
 }`,
 		},
 		{
