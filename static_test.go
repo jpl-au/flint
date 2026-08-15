@@ -29,6 +29,29 @@ func TestCheckStaticPositive(t *testing.T) {
 			want: "Static() argument must be a string literal; got function call",
 		},
 		{
+			name: "a function not named for the idiom forwarding its parameter",
+			src: []byte(`package p
+
+import "github.com/jpl-au/fluent/text"
+
+func Label(txt string) *text.Node {
+	return text.Static(txt)
+}`),
+			want: `Static() argument must be a string literal; got variable "txt"`,
+		},
+		{
+			name: "a Static wrapper passing something other than its parameter",
+			src: []byte(`package p
+
+import "github.com/jpl-au/fluent/text"
+
+func Static(label string) *text.Node {
+	derived := label + "!"
+	return text.Static(derived)
+}`),
+			want: `Static() argument must be a string literal; got variable "derived"`,
+		},
+		{
 			name: "package-level text.Static with variable",
 			src:  wrap(`name := "world"; _ = text.Static(name)`),
 			want: `Static() argument must be a string literal; got variable "name"`,
@@ -123,6 +146,28 @@ func TestCheckStaticNegative(t *testing.T) {
 				[]string{"example.com/mylib"},
 				`name := "world"; _ = mylib.New().Static(name)`,
 			),
+		},
+		{
+			name: "pass-through idiom: Static wrapper forwarding its parameter",
+			src: []byte(`package p
+
+import "github.com/jpl-au/fluent/text"
+
+func Static(label string) *text.Node {
+	return text.Static(label)
+}`),
+		},
+		{
+			name: "pass-through idiom: Static-suffixed method forwarding its parameter",
+			src: []byte(`package p
+
+import "github.com/jpl-au/fluent/text"
+
+type Form struct{}
+
+func (f *Form) LabelStatic(txt string) *text.Node {
+	return text.Static(txt)
+}`),
 		},
 	}
 

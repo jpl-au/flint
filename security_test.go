@@ -39,6 +39,17 @@ func TestCheckRawTextPositive(t *testing.T) {
 			want: `RawText() first argument must be a string literal; got variable "html"`,
 		},
 		{
+			name: "a Static-named wrapper does not exempt RawText",
+			src: []byte(`package p
+
+import "github.com/jpl-au/fluent/text"
+
+func ErrorStatic(markup string) *text.Node {
+	return text.RawText(markup)
+}`),
+			want: `RawText() first argument must be a string literal; got variable "markup"`,
+		},
+		{
 			name: "chained RawText with variable",
 			src: wrapWithImports(
 				[]string{"github.com/jpl-au/fluent/html5/div"},

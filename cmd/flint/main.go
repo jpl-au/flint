@@ -222,7 +222,9 @@ type textPrinter struct {
 }
 
 func (p textPrinter) diagnostic(d flint.Diagnostic) {
-	fmt.Fprintf(p.out, "%s:%d:%d: %s: %s\n", d.Pos.Filename, d.Pos.Line, d.Pos.Column, d.Severity, d.Message)
+	// The check name rides along in brackets so a diagnostic can be cited
+	// (and suppressed with //flint:allow) without reaching for -json.
+	fmt.Fprintf(p.out, "%s:%d:%d: %s[%s]: %s\n", d.Pos.Filename, d.Pos.Line, d.Pos.Column, d.Severity, d.Check, d.Message)
 	if d.Fix != "" {
 		fmt.Fprintf(p.out, "  fix: %s\n", d.Fix)
 	}

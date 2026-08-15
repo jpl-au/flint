@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"strings"
 )
 
 // literalArgCheck describes a check that flags calls to named functions
@@ -15,6 +16,17 @@ type literalArgCheck struct {
 	severity Severity
 	message  string // fmt pattern for the diagnostic
 	fix      string
+
+	// passThrough exempts the paired-constructor idiom: a function whose
+	// name ends in Static, forwarding its own parameter to the flagged call.
+	// That forwarding IS the contract - identical to fluent's own paired
+	// Static/Text constructors - so flagging it warns forever on deliberate
+	// code. The wrapper's name carries the literal-only obligation up to its
+	// callers, exactly as div.Static's does. Deliberately not extended to
+	// RawText: auto-waiving the security check on a naming convention would
+	// hide real XSS holes, so a trusted RawText wrapper states its case with
+	// a //flint:allow directive instead.
+	passThrough bool
 }
 
 // checkStatic reports calls to Static() where the argument is not a
@@ -22,12 +34,13 @@ type literalArgCheck struct {
 // must not contain dynamic values.
 func (l *Linter) checkStatic(fset *token.FileSet, file *ast.File) []Diagnostic {
 	return l.checkLiteralArgs(fset, file, literalArgCheck{
-		name:     "static",
-		names:    []string{"Static"},
-		nargs:    1,
-		severity: Warning,
-		message:  "Static() argument must be a string literal; got %s",
-		fix:      "Static() is for string literals only (JIT pre-rendering); replace Static with Text or Textf for dynamic content",
+		name:        "static",
+		names:       []string{"Static"},
+		nargs:       1,
+		severity:    Warning,
+		message:     "Static() argument must be a string literal; got %s",
+		fix:         "Static() is for string literals only (JIT pre-rendering); replace Static with Text or Textf for dynamic content",
+		passThrough: true,
 	})
 }
 
@@ -46,6 +59,11 @@ func (l *Linter) checkLiteralArgs(fset *token.FileSet, file *ast.File, check lit
 	var imports map[string]string
 	if l.registry != nil {
 		imports = resolveImports(file)
+	}
+
+	var wrappers []staticWrapper
+	if check.passThrough {
+		wrappers = staticWrappers(file)
 	}
 
 	ast.Inspect(file, func(n ast.Node) bool {
@@ -81,6 +99,9 @@ func (l *Linter) checkLiteralArgs(fset *token.FileSet, file *ast.File, check lit
 		if isStringLiteral(arg) {
 			return true
 		}
+		if check.passThrough && forwardsWrapperParam(wrappers, call.Pos(), arg) {
+			return true
+		}
 
 		var msg string
 		if len(check.names) == 1 {
@@ -102,4 +123,53 @@ func (l *Linter) checkLiteralArgs(fset *token.FileSet, file *ast.File, check lit
 	})
 
 	return diags
+}
+
+// staticWrapper is one function whose name ends in Static: its source extent
+// and parameter names, for recognising the pass-through idiom.
+type staticWrapper struct {
+	pos, end token.Pos
+	params   map[string]bool
+}
+
+// staticWrappers collects every function declaration in the file whose name
+// ends in Static, with its parameter names. Method receivers qualify the same
+// way as plain functions: form.LabelStatic is the idiom as much as Static.
+func staticWrappers(file *ast.File) []staticWrapper {
+	var wrappers []staticWrapper
+	for _, decl := range file.Decls {
+		fd, ok := decl.(*ast.FuncDecl)
+		if !ok || !strings.HasSuffix(fd.Name.Name, "Static") {
+			continue
+		}
+		params := map[string]bool{}
+		if fd.Type.Params != nil {
+			for _, field := range fd.Type.Params.List {
+				for _, id := range field.Names {
+					if id.Name != "_" {
+						params[id.Name] = true
+					}
+				}
+			}
+		}
+		wrappers = append(wrappers, staticWrapper{pos: fd.Pos(), end: fd.End(), params: params})
+	}
+	return wrappers
+}
+
+// forwardsWrapperParam reports whether a call at pos passes a parameter of an
+// enclosing Static-named function as arg - the pass-through idiom. A local
+// that shadows the parameter would be blessed too; the approximation errs
+// only inside functions that already declare the literal-only contract.
+func forwardsWrapperParam(wrappers []staticWrapper, pos token.Pos, arg ast.Expr) bool {
+	id, ok := unparen(arg).(*ast.Ident)
+	if !ok {
+		return false
+	}
+	for _, w := range wrappers {
+		if pos >= w.pos && pos < w.end && w.params[id.Name] {
+			return true
+		}
+	}
+	return false
 }
