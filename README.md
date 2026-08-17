@@ -55,8 +55,7 @@ The first column is the stable check name, printed with every diagnostic (`warni
 | `constructors` | info | A `New()` chain a package-level constructor would build in one call, matched on what the chain sets rather than on method names |
 | `buffer-hint` | info | An element already holding 4 KiB or more of static content, which could carry `.BufferHint(n)` |
 
-Each diagnostic carries a `fix:` line describing the correction for the code it
-found.
+Each diagnostic carries a `fix:` line describing the correction for the code it found. In the terminal output a given `fix:` paragraph is printed the first time it appears in a run and omitted on later diagnostics that share it, so a check firing across many call sites reports every site without repeating the same explanation each time. Every diagnostic still prints, and `-json` always carries the full `fix` on every object.
 
 ## Severity levels
 

@@ -57,6 +57,14 @@ func TestRegistryMatchesFluentSource(t *testing.T) {
 				t.Errorf("%s: exported function %s missing from registry Functions; the symbol check will falsely report it as nonexistent", path, name)
 			}
 		}
+		checkArities(t, path, "function", pkg.Functions, src.funcs)
+
+		// Methods describes the package's primary type, which throughout
+		// fluent is Element; TypeMethods covers the types constructors return.
+		checkArities(t, path, "Element method", pkg.Methods, src.methods["Element"])
+		for _, typeName := range sortedNames(pkg.TypeMethods) {
+			checkArities(t, path, typeName+" method", pkg.TypeMethods[typeName], src.methods[typeName])
+		}
 		for _, name := range sortedNames(src.types) {
 			if !pkg.Types[name] {
 				t.Errorf("%s: exported type %s missing from registry Types; the symbol check will falsely report it as nonexistent", path, name)
@@ -69,7 +77,7 @@ func TestRegistryMatchesFluentSource(t *testing.T) {
 		}
 
 		for name := range pkg.Functions {
-			if !src.funcs[name] {
+			if _, ok := src.funcs[name]; !ok {
 				t.Errorf("%s: registry records function %s but the source does not export it; the entry is stale", path, name)
 			}
 		}
@@ -101,16 +109,17 @@ func sourceDir(importPath string) (string, bool) {
 
 // symbols holds the exported package-level names of one source package.
 type symbols struct {
-	funcs map[string]bool // functions (methods excluded)
-	types map[string]bool
-	vars  map[string]bool // vars and consts; the symbol check reads both from Vars
+	funcs   map[string]int // functions (methods excluded), keyed to their arity
+	types   map[string]bool
+	vars    map[string]bool           // vars and consts; the symbol check reads both from Vars
+	methods map[string]map[string]int // exported receiver type, then method, keyed to arity
 }
 
 // exportedSymbols parses every non-test Go file in dir and collects its
 // exported package-level declarations. Parsing is purely syntactic - no type
 // checking - which is all the symbol check itself relies on.
 func exportedSymbols(dir string) (symbols, error) {
-	s := symbols{funcs: map[string]bool{}, types: map[string]bool{}, vars: map[string]bool{}}
+	s := symbols{funcs: map[string]int{}, types: map[string]bool{}, vars: map[string]bool{}, methods: map[string]map[string]int{}}
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -129,8 +138,18 @@ func exportedSymbols(dir string) (symbols, error) {
 		for _, decl := range file.Decls {
 			switch d := decl.(type) {
 			case *ast.FuncDecl:
-				if d.Recv == nil && d.Name.IsExported() {
-					s.funcs[d.Name.Name] = true
+				if !d.Name.IsExported() {
+					continue
+				}
+				if d.Recv == nil {
+					s.funcs[d.Name.Name] = declArity(d.Type)
+					continue
+				}
+				if recv := receiverType(d.Recv); recv != "" {
+					if s.methods[recv] == nil {
+						s.methods[recv] = map[string]int{}
+					}
+					s.methods[recv][d.Name.Name] = declArity(d.Type)
 				}
 			case *ast.GenDecl:
 				for _, spec := range d.Specs {
@@ -153,8 +172,64 @@ func exportedSymbols(dir string) (symbols, error) {
 	return s, nil
 }
 
+// declArity is the argument count a function or method declaration accepts,
+// with -1 for variadic - the same convention the registry records.
+func declArity(t *ast.FuncType) int {
+	if t.Params == nil {
+		return 0
+	}
+	count := 0
+	for _, field := range t.Params.List {
+		if _, variadic := field.Type.(*ast.Ellipsis); variadic {
+			return -1
+		}
+		// A field with no names is one unnamed parameter; otherwise it
+		// declares one parameter per name.
+		count += max(len(field.Names), 1)
+	}
+	return count
+}
+
+// receiverType is the exported type a method is declared on, or "" when the
+// receiver is unexported or not a plain (possibly pointer) type name.
+func receiverType(recv *ast.FieldList) string {
+	if recv == nil || len(recv.List) == 0 {
+		return ""
+	}
+	expr := recv.List[0].Type
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	name, ok := expr.(*ast.Ident)
+	if !ok || !name.IsExported() {
+		return ""
+	}
+	return name.Name
+}
+
+// checkArities compares one registered method set against the source over the
+// names they share. Arity is what the method-arity check validates, and a wrong
+// value there turns correct code into an error: recording .Required(conds
+// ...bool) as arity 0 made every conditional call a false positive across the
+// porter upgrade. Names the source does not declare are left to the existing
+// presence assertions rather than reported twice. Subject names what is being
+// compared, e.g. "function" or "Element method".
+func checkArities(t *testing.T, path, subject string, registered, source map[string]int) {
+	t.Helper()
+
+	for _, name := range sortedNames(registered) {
+		want, ok := source[name]
+		if !ok {
+			continue
+		}
+		if got := registered[name]; got != want {
+			t.Errorf("%s: %s %s records arity %d but the source declares %d; method-arity will falsely report correct calls", path, subject, name, got, want)
+		}
+	}
+}
+
 // sortedNames returns a set's names in order, for stable failure output.
-func sortedNames(set map[string]bool) []string {
+func sortedNames[V any](set map[string]V) []string {
 	names := make([]string, 0, len(set))
 	for name := range set {
 		names = append(names, name)

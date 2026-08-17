@@ -12,7 +12,10 @@ Severities: an **error** will not compile and must be fixed; a
 **warning** compiles but carries a real reason to change; **info** is
 advisory and safe to leave. Exit codes: `0` clean or advisory-only,
 `1` errors found, `2` usage or I/O error. Every diagnostic prints its
-stable check name (`warning[setattr-key]: ...`).
+stable check name (`warning[setattr-key]: ...`). A `fix:` paragraph is
+printed once per run: diagnostics sharing an earlier one print their
+message alone, so read the first occurrence of a check for its fix, or
+use `-json`, where every object carries the full `fix`.
 
 A deliberate pattern flint flags can be suppressed per site with a
 reasoned directive naming the check:

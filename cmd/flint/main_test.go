@@ -144,9 +144,30 @@ func TestJSONPrinterOmitsEmptyFix(t *testing.T) {
 	}
 }
 
+func TestTextPrinterExplainsEachFixOnce(t *testing.T) {
+	var out, errw strings.Builder
+	p := newTextPrinter(&out, &errw)
+
+	shared := flint.Diagnostic{Check: "node-append", Message: `"children" is assembled with append`, Fix: "compose the children directly"}
+	p.diagnostic(shared)
+	p.diagnostic(shared)
+	p.diagnostic(flint.Diagnostic{Check: "node-append", Message: `"items" is assembled with append`, Fix: "a different fix"})
+
+	if got, want := strings.Count(out.String(), "compose the children directly"), 1; got != want {
+		t.Errorf("repeated fix printed %d times, want %d:\n%s", got, want, out.String())
+	}
+	if !strings.Contains(out.String(), "a different fix") {
+		t.Errorf("a distinct fix must still be explained, got:\n%s", out.String())
+	}
+	// Every diagnostic still reports; only the repeated explanation is dropped.
+	if got, want := strings.Count(out.String(), "[node-append]"), 3; got != want {
+		t.Errorf("printed %d diagnostics, want %d:\n%s", got, want, out.String())
+	}
+}
+
 func TestTextPrinterSummary(t *testing.T) {
 	var out, errw strings.Builder
-	p := textPrinter{out: &out, err: &errw}
+	p := newTextPrinter(&out, &errw)
 
 	p.summary(0, 0)
 	if errw.Len() != 0 {

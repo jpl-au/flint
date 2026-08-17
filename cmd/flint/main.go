@@ -143,7 +143,7 @@ func main() {
 		l = flint.New(flint.FluentRegistry())
 	}
 
-	var p printer = textPrinter{out: os.Stdout, err: os.Stderr}
+	var p printer = newTextPrinter(os.Stdout, os.Stderr)
 	if *jsonOut {
 		p = jsonPrinter{enc: json.NewEncoder(os.Stdout)}
 	}
@@ -219,13 +219,28 @@ type printer interface {
 // an indented fix line on out, and a run summary on err.
 type textPrinter struct {
 	out, err io.Writer
+
+	// seenFixes records the fix paragraphs already written, so each one is
+	// explained once per run. The fix text is the same for every site of the
+	// same shape, and the advisory checks fire often: node-append alone
+	// accounted for a whole run's output on porter, two thirds of it the same
+	// paragraph repeated. Every diagnostic still prints; only the repeated
+	// explanation is dropped.
+	seenFixes map[string]bool
+}
+
+// newTextPrinter returns a text printer writing diagnostics to out and the run
+// summary to err.
+func newTextPrinter(out, err io.Writer) textPrinter {
+	return textPrinter{out: out, err: err, seenFixes: map[string]bool{}}
 }
 
 func (p textPrinter) diagnostic(d flint.Diagnostic) {
 	// The check name rides along in brackets so a diagnostic can be cited
 	// (and suppressed with //flint:allow) without reaching for -json.
 	fmt.Fprintf(p.out, "%s:%d:%d: %s[%s]: %s\n", d.Pos.Filename, d.Pos.Line, d.Pos.Column, d.Severity, d.Check, d.Message)
-	if d.Fix != "" {
+	if d.Fix != "" && !p.seenFixes[d.Fix] {
+		p.seenFixes[d.Fix] = true
 		fmt.Fprintf(p.out, "  fix: %s\n", d.Fix)
 	}
 }
