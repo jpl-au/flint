@@ -116,9 +116,9 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 				return true
 			}
 
-			// We reach here only when the root constructor's return type is not
-			// recorded (no FuncReturns entry) and the method is in neither the
-			// package's flat method set nor its function set. For an element
+			// This point is reached only when the root constructor's return
+			// type is not recorded (no FuncReturns entry) and the method is in
+			// neither the package's flat method set nor its function set. For an element
 			// package the registered method set is authoritative, so this is a
 			// firm error. For a non-element package (e.g. a chain off
 			// security.New(), whose return type flint does not record) the

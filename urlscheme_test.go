@@ -22,7 +22,7 @@ import "github.com/jpl-au/fluent/html5/a"
 func f() {
 	_ = a.New().Href("javascript:alert(1)")
 }`,
-			want: `.Href() is given a "javascript:" URL; fluent's filter rejects the scheme and renders "#fluent-unsafe-url" instead`,
+			want: `.Href() is given a "javascript:" URL. Fluent rejects this scheme and renders "#fluent-unsafe-url" instead.`,
 		},
 		{
 			name: "leading whitespace does not hide the scheme",
@@ -33,7 +33,7 @@ import "github.com/jpl-au/fluent/html5/a"
 func f() {
 	_ = a.New().Href(" javascript:x")
 }`,
-			want: `.Href() is given a "javascript:" URL; fluent's filter rejects the scheme and renders "#fluent-unsafe-url" instead`,
+			want: `.Href() is given a "javascript:" URL. Fluent rejects this scheme and renders "#fluent-unsafe-url" instead.`,
 		},
 		{
 			name: "scheme match is case-insensitive",
@@ -44,7 +44,7 @@ import "github.com/jpl-au/fluent/html5/a"
 func f() {
 	_ = a.New().Href("JavaScript:x")
 }`,
-			want: `.Href() is given a "JavaScript:" URL; fluent's filter rejects the scheme and renders "#fluent-unsafe-url" instead`,
+			want: `.Href() is given a "JavaScript:" URL. Fluent rejects this scheme and renders "#fluent-unsafe-url" instead.`,
 		},
 		{
 			name: "data scheme is rejected too",
@@ -55,7 +55,7 @@ import "github.com/jpl-au/fluent/html5/a"
 func f() {
 	_ = a.New().Href("data:text/html,<script>x</script>")
 }`,
-			want: `.Href() is given a "data:" URL; fluent's filter rejects the scheme and renders "#fluent-unsafe-url" instead`,
+			want: `.Href() is given a "data:" URL. Fluent rejects this scheme and renders "#fluent-unsafe-url" instead.`,
 		},
 		{
 			name: "constructor URL param at a non-zero index",
@@ -66,7 +66,7 @@ import "github.com/jpl-au/fluent/html5/a"
 func f() {
 	_ = a.Download("Report", "javascript:steal()", "report.pdf")
 }`,
-			want: `a.Download is given a "javascript:" URL; fluent's filter rejects the scheme and renders "#fluent-unsafe-url" instead`,
+			want: `a.Download is given a "javascript:" URL. Fluent rejects this scheme and renders "#fluent-unsafe-url" instead.`,
 		},
 		{
 			name: "URL method on a local assigned from a fluent chain",
@@ -78,7 +78,7 @@ func f() {
 	lnk := a.New()
 	_ = lnk.Href("vbscript:x")
 }`,
-			want: `.Href() is given a "vbscript:" URL; fluent's filter rejects the scheme and renders "#fluent-unsafe-url" instead`,
+			want: `.Href() is given a "vbscript:" URL. Fluent rejects this scheme and renders "#fluent-unsafe-url" instead.`,
 		},
 	}
 
@@ -95,7 +95,7 @@ func f() {
 					if d.Severity != Warning {
 						t.Errorf("severity = %v, want Warning", d.Severity)
 					}
-					if !strings.Contains(d.Fix, "http(s), mailto, tel, sms or a relative URL") {
+					if !strings.Contains(d.Fix, "http, https, mailto, tel, sms or a relative URL") {
 						t.Errorf("fix = %q, missing allowlist guidance", d.Fix)
 					}
 					break

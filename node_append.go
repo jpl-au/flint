@@ -75,8 +75,8 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 				Pos:      fset.Position(declIdent.Pos()),
 				End:      fset.Position(sc.splat.End()),
 				Severity: Warning,
-				Message:  fmt.Sprintf("%q is appended to inside a defer or goroutine, after it has already been passed in - those children will not appear", name),
-				Fix:      "build the children before passing the slice in; an append in a defer or goroutine runs too late to reach the element",
+				Message:  fmt.Sprintf("%q is appended inside a defer or goroutine, after it was passed in. Those children do not render.", name),
+				Fix:      "Build the children before you pass the slice in. An append in a defer or goroutine runs after the element has taken the slice.",
 			})
 			continue
 		}
@@ -89,10 +89,10 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 		}
 
 		// Only a sink that resolves to a Fluent package (div.New, ul.New, an
-		// inline div.New().Add, ...) is a constructor we can name. A plain
-		// function or a method on a local of unknown type does not resolve, so
-		// the advice drops the element-specific wording rather than inventing a
-		// constructor that is not there.
+		// inline div.New().Add, ...) has a constructor the diagnostic can name.
+		// A plain function, or a method on a local of unknown type, does not
+		// resolve, so the advice drops the element-specific wording rather than
+		// naming a constructor that does not exist.
 		_, intoElement := chainPackage(sc.splat.Fun, imports, l.registry)
 		fix := nodeAppendFix(sc.class, intoElement)
 
@@ -125,8 +125,8 @@ func (l *Linter) nodeAppendInBody(fset *token.FileSet, body *ast.BlockStmt, impo
 			Pos:      fset.Position(declIdent.Pos()),
 			End:      fset.Position(sc.splat.End()),
 			Severity: Info,
-			Message:  fmt.Sprintf("%q is assembled with append; Fluent can compose these children directly", name),
-			Fix:      "the append-and-splat form you have is correct and, for render-once output, the cheapest; these are readability alternatives: " + fix,
+			Message:  fmt.Sprintf("%q is built with append. Fluent can compose these children directly.", name),
+			Fix:      "Your code is correct, and for output rendered once it is the cheapest form. These are alternatives for readability only: " + fix,
 		})
 	}
 

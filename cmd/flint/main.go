@@ -221,11 +221,9 @@ type textPrinter struct {
 	out, err io.Writer
 
 	// seenFixes records the fix paragraphs already written, so each one is
-	// explained once per run. The fix text is the same for every site of the
-	// same shape, and the advisory checks fire often: node-append alone
-	// accounted for a whole run's output on porter, two thirds of it the same
-	// paragraph repeated. Every diagnostic still prints; only the repeated
-	// explanation is dropped.
+	// explained once per run. One fix text serves every site of the same shape,
+	// and a check can fire on many sites in one run. Every diagnostic still
+	// prints; only the repeated explanation is dropped.
 	seenFixes map[string]bool
 }
 

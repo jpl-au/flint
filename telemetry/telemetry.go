@@ -37,7 +37,7 @@ const (
 	issueFields = 5 // seq, check, position, hash, message
 
 	// maxIssues is the number of issues a run can hold. The sequence number
-	// is two digits, so references beyond 99 could no longer be parsed.
+	// is two digits, so a reference beyond 99 cannot be parsed.
 	maxIssues = 99
 )
 

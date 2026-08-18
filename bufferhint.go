@@ -54,7 +54,7 @@ func (l *Linter) checkBufferHint(fset *token.FileSet, file *ast.File) []Diagnost
 					End:      fset.Position(call.End()),
 					Severity: Info,
 					Message:  fmt.Sprintf("this element renders at least %d bytes of static content", size),
-					Fix:      fmt.Sprintf("chain .BufferHint(%d) to pre-size the pooled render buffer - for a render this large it lets the buffer be reused between renders instead of regrown each time", size),
+					Fix:      fmt.Sprintf("Chain .BufferHint(%d) to size the pooled render buffer up front. A render this large otherwise grows the buffer again on every render.", size),
 				})
 			}
 		}

@@ -137,7 +137,7 @@ func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnost
 					End:      fset.Position(call.End()),
 					Severity: Warning,
 					Message:  fmt.Sprintf("%s(%q, ...) should use %s(%q, ...) instead", name, key, p.helper, suffix),
-					Fix:      fmt.Sprintf("%s supports chaining and groups %s attributes; %s does not return the element", p.helper, strings.TrimSuffix(p.prefix, "-"), name),
+					Fix:      fmt.Sprintf("%s returns the element, so you can chain after it. It also groups %s attributes. %s returns nothing.", p.helper, strings.TrimSuffix(p.prefix, "-"), name),
 				})
 				return true
 			}
@@ -148,12 +148,12 @@ func (l *Linter) checkSetAttrKey(fset *token.FileSet, file *ast.File) []Diagnost
 			return true
 		}
 
-		// The raw variant deserves the sharper warning: it bypasses the typed
-		// method, the set-time escaping AND the URL scheme filter, so a known
-		// attribute written through it is the most exposed shape flint can see.
-		fix := fmt.Sprintf(".%s() manages this attribute through a struct field, and for URL attributes filters the scheme against the allowlist; SetAttribute escapes the value but does not filter and can produce duplicate attributes, so reach for it only as the deliberate escaped-but-unfiltered override (SetAttributeRaw skips escaping too)", method)
+		// The raw variant gets the sharper warning. It skips the typed method, the
+		// set-time escaping and the URL scheme check, so a known attribute written
+		// through it is the most exposed shape flint can see.
+		fix := fmt.Sprintf("Use .%s() instead. It sets the attribute through a typed field. For a URL attribute it also checks the scheme. SetAttribute escapes the value but does not check the scheme, and it can add a second copy of the attribute.", method)
 		if name == "SetAttributeRaw" {
-			fix = fmt.Sprintf(".%s() manages this attribute through a struct field, escapes the value and for URL attributes filters the scheme against the allowlist; SetAttributeRaw does none of that, so keep it only when these exact raw bytes are the point", method)
+			fix = fmt.Sprintf("Use .%s() instead. It sets the attribute through a typed field and escapes the value. For a URL attribute it also checks the scheme. SetAttributeRaw does none of these. Keep it only when you need these exact bytes.", method)
 		}
 		diags = append(diags, Diagnostic{
 			Check:    "setattr-key",

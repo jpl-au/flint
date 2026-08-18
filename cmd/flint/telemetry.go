@@ -118,7 +118,7 @@ func warnTelemetry(err error) {
 
 // span returns src[start:end] when the offsets form a valid range within src,
 // or the empty string otherwise. A telemetry snippet is only ever hashed, so an
-// invalid span simply contributes an empty hash rather than panicking.
+// invalid span contributes an empty hash rather than panicking.
 func span(src []byte, start, end int) string {
 	if start < 0 || end < start || end > len(src) {
 		return ""

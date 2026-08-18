@@ -145,8 +145,7 @@ func TestCheckMethodArity(t *testing.T) {
 			want:    ".ID() expects 1 argument(s), got 0",
 		},
 		{
-			// Dynamic used to be variadic with a keyless "_" sentinel;
-			// the key is now required (it is the element's identity).
+			// Dynamic requires a key: the key is the element's identity.
 			name:    "Dynamic with 0 args is flagged",
 			imports: []string{"github.com/jpl-au/fluent/html5/div"},
 			body:    `_ = div.New().Dynamic()`,

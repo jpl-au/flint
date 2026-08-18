@@ -17,15 +17,15 @@ type literalArgCheck struct {
 	message  string // fmt pattern for the diagnostic
 	fix      string
 
-	// passThrough exempts the paired-constructor idiom: a function whose
-	// name ends in Static, forwarding its own parameter to the flagged call.
-	// That forwarding IS the contract - identical to fluent's own paired
-	// Static/Text constructors - so flagging it warns forever on deliberate
-	// code. The wrapper's name carries the literal-only obligation up to its
-	// callers, exactly as div.Static's does. Deliberately not extended to
-	// RawText: auto-waiving the security check on a naming convention would
-	// hide real XSS holes, so a trusted RawText wrapper states its case with
-	// a //flint:allow directive instead.
+	// passThrough exempts the paired-constructor idiom: a function whose name
+	// ends in Static, forwarding its own parameter to the flagged call. The
+	// forwarding is the contract, the same one fluent's own paired Static and
+	// Text constructors carry, so the wrapper's name passes the literal-only
+	// obligation to its callers as div.Static does.
+	//
+	// The exemption does not extend to RawText. RawText skips escaping, so
+	// waiving the check on a naming convention alone would hide an XSS hole. A
+	// trusted RawText wrapper needs a //flint:allow directive.
 	passThrough bool
 }
 

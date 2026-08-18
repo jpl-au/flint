@@ -12,8 +12,8 @@ import (
 // reject. URL-valued sinks (href, src, action, ...) pass their value through
 // a positive scheme allowlist at set time; a literal with any other scheme is
 // silently replaced by the #fluent-unsafe-url sentinel, so the written URL
-// never reaches the output. That silent swap is invisible until someone
-// clicks the link, which makes it worth hearing about at lint time.
+// never reaches the output. Nothing fails at build time, and the swap is
+// visible only when someone follows the link.
 func (l *Linter) checkURLScheme(fset *token.FileSet, file *ast.File) []Diagnostic {
 	if l.registry == nil {
 		return nil
@@ -77,8 +77,8 @@ func (l *Linter) checkURLScheme(fset *token.FileSet, file *ast.File) []Diagnosti
 			Pos:      fset.Position(lit.Pos()),
 			End:      fset.Position(lit.End()),
 			Severity: Warning,
-			Message:  fmt.Sprintf("%s is given a %q URL; fluent's filter rejects the scheme and renders \"#fluent-unsafe-url\" instead", context, scheme+":"),
-			Fix:      "Use http(s), mailto, tel, sms or a relative URL; for a deliberate custom scheme, set the attribute with SetAttribute, which escapes but does not filter",
+			Message:  fmt.Sprintf("%s is given a %q URL. Fluent rejects this scheme and renders \"#fluent-unsafe-url\" instead.", context, scheme+":"),
+			Fix:      "Use http, https, mailto, tel, sms or a relative URL. To set a custom scheme on purpose, use SetAttribute, which escapes the value but does not check the scheme.",
 		})
 		return true
 	})

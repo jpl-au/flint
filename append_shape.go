@@ -29,7 +29,7 @@ func isAppendTo(s *ast.AssignStmt, name string) bool {
 
 // isSplat reports whether call spreads the slice named name as its final
 // argument (f(..., name...)). append and copy are excluded: feeding the slice
-// into another append is a merge, not a sink we can inline.
+// into another append is a merge, not a sink the rewrite can target.
 func isSplat(call *ast.CallExpr, name string) bool {
 	if !call.Ellipsis.IsValid() || len(call.Args) == 0 {
 		return false

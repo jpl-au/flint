@@ -49,7 +49,7 @@ func (l *Linter) checkShadows(fset *token.FileSet, file *ast.File) []Diagnostic 
 			End:      fset.Position(id.End()),
 			Severity: Warning,
 			Message:  fmt.Sprintf("%s %q shadows the fluent package imported as %q", kind, id.Name, id.Name),
-			Fix:      fmt.Sprintf("rename the %s or alias the import; while shadowed, %s.X reads as the package but is not, and flint's other diagnostics for %q may be misleading", kind, id.Name, id.Name),
+			Fix:      fmt.Sprintf("Rename the %s, or give the import an alias. While the name is shadowed, %s.X looks like the package but is not, and other diagnostics for %q may be wrong.", kind, id.Name, id.Name),
 		})
 	}
 

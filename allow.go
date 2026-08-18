@@ -39,8 +39,8 @@ func applyAllowDirectives(fset *token.FileSet, file *ast.File, src []byte, diags
 					Pos:      fset.Position(c.Slash),
 					End:      fset.Position(c.End()),
 					Severity: Warning,
-					Message:  "//flint:allow needs a check name and a reason; this directive suppresses nothing",
-					Fix:      "Write //flint:allow <check> <reason>, e.g. //flint:allow raw-text trusted markup owned by the server; the check name is printed with every diagnostic",
+					Message:  "//flint:allow needs a check name and a reason. This directive suppresses nothing.",
+					Fix:      "Write //flint:allow <check> <reason>. For example: //flint:allow raw-text trusted markup owned by the server. Every diagnostic prints its check name.",
 				})
 				continue
 			}

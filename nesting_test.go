@@ -20,7 +20,7 @@ import "github.com/jpl-au/fluent/html5/a"
 func f() {
 	_ = a.New(a.Static("Back")).Href("/home")
 }`,
-			want:    `a.Static(...) builds another <a> element, so this nests <a> inside <a>; HTML forbids it and browsers unnest the inner element`,
+			want:    `a.Static(...) builds another <a> element, which nests <a> inside <a>. HTML does not allow this, and the browser moves the inner element out.`,
 			wantFix: `For text content inside a.New, use text.Static or text.Text from fluent/text; a.Static is the paired constructor that builds a whole <a> element`,
 		},
 		{
@@ -32,7 +32,7 @@ import "github.com/jpl-au/fluent/html5/form"
 func f() {
 	_ = form.New(form.New())
 }`,
-			want:    `form.New(...) builds another <form> element, so this nests <form> inside <form>; HTML forbids it and browsers unnest the inner element`,
+			want:    `form.New(...) builds another <form> element, which nests <form> inside <form>. HTML does not allow this, and the browser moves the inner element out.`,
 			wantFix: `Restructure so the two <form> elements are siblings`,
 		},
 		{
@@ -44,7 +44,7 @@ import "github.com/jpl-au/fluent/html5/a"
 func f() {
 	_ = a.New().Add(a.Text("inner"))
 }`,
-			want: `a.Text(...) builds another <a> element, so this nests <a> inside <a>; HTML forbids it and browsers unnest the inner element`,
+			want: `a.Text(...) builds another <a> element, which nests <a> inside <a>. HTML does not allow this, and the browser moves the inner element out.`,
 		},
 	}
 

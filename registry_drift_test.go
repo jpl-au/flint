@@ -12,15 +12,15 @@ import (
 )
 
 // TestRegistryMatchesFluentSource diffs the generated registry against the
-// real exported API of the sibling fluent checkout. The symbol check treats
-// the registry as authoritative - a name absent from Functions, Types and
-// Vars is reported as an error - so any exported symbol the registry misses
-// is a false positive waiting to happen (the svg.Element and node.OnUnsafeURL
-// class from the hue-server field audit). Both directions are asserted: every
-// exported package-level symbol in the source must be registered, and every
-// registered symbol must exist in the source. The test skips when the sibling
-// checkout is absent, so flint still tests standalone; fluent-generator's
-// gen-check runs it with the siblings present.
+// exported API of the sibling fluent checkout. The symbol check treats the
+// registry as authoritative: a name absent from Functions, Types and Vars is
+// reported as an error, so a symbol the registry misses becomes a false
+// positive.
+//
+// Both directions are asserted. Every exported package-level symbol in the
+// source must be registered, and every registered symbol must exist in the
+// source. The test skips when the sibling checkout is absent, so flint tests
+// standalone. fluent-generator's gen-check runs it with the siblings present.
 func TestRegistryMatchesFluentSource(t *testing.T) {
 	if _, err := os.Stat("../fluent/go.mod"); err != nil {
 		t.Skipf("sibling fluent checkout not found: %v", err)
@@ -208,12 +208,10 @@ func receiverType(recv *ast.FieldList) string {
 }
 
 // checkArities compares one registered method set against the source over the
-// names they share. Arity is what the method-arity check validates, and a wrong
-// value there turns correct code into an error: recording .Required(conds
-// ...bool) as arity 0 made every conditional call a false positive across the
-// porter upgrade. Names the source does not declare are left to the existing
-// presence assertions rather than reported twice. Subject names what is being
-// compared, e.g. "function" or "Element method".
+// names they share. The method-arity check reads these values, so a wrong arity
+// reports correct code as an error. Names the source does not declare are left
+// to the presence assertions. Subject names what is compared, such as
+// "function" or "Element method".
 func checkArities(t *testing.T, path, subject string, registered, source map[string]int) {
 	t.Helper()
 

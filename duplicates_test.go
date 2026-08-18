@@ -23,7 +23,7 @@ import "github.com/jpl-au/fluent/html5/div"
 func f() {
 	_ = div.New().ID("a").ID("b")
 }`,
-			want:    `.ID() overwrites the value set by the earlier .ID() (line 6); only the last value is rendered`,
+			want:    `.ID() overwrites the value that .ID() set on line 6. Only the last value renders.`,
 			wantFix: `Keep a single .ID() call with the value you want rendered`,
 		},
 		{
@@ -36,7 +36,7 @@ func f() {
 	i := input.New()
 	_ = i.Name("a").Name("b")
 }`,
-			want:    `.Name() overwrites the value set by the earlier .Name() (line 7); only the last value is rendered`,
+			want:    `.Name() overwrites the value that .Name() set on line 7. Only the last value renders.`,
 			wantFix: `Keep a single .Name() call with the value you want rendered`,
 		},
 		{
@@ -48,8 +48,8 @@ import "github.com/jpl-au/fluent/html5/div"
 func f() {
 	div.New().Class("box").SetAttribute("class", "extra")
 }`,
-			want:    `SetAttribute("class", ...) duplicates the .Class() call earlier in this chain; both render, duplicating the class attribute`,
-			wantFix: `Fold the value into the .Class() call; browsers keep only the first of a duplicated attribute`,
+			want:    `SetAttribute("class", ...) repeats the .Class() call earlier in this chain. Both render, so the class attribute appears twice.`,
+			wantFix: `Move the value into the .Class() call. A browser keeps the first copy of a duplicated attribute.`,
 		},
 		{
 			name: "SetAttribute duplicating what the chain's constructor set",
@@ -60,8 +60,8 @@ import "github.com/jpl-au/fluent/html5/input"
 func f() {
 	input.Text("e", "").SetAttribute("type", "email")
 }`,
-			want:    `SetAttribute("type", ...) duplicates the type attribute input.Text already sets; both render, and browsers keep the first, so this value never takes effect`,
-			wantFix: `Browsers keep only the first of a duplicated attribute; choose a constructor that sets the type you want, or set it once through .Type()`,
+			want:    `SetAttribute("type", ...) sets type again after input.Text. Both render, and the browser uses the first, so this value has no effect.`,
+			wantFix: `A browser keeps the first copy of a duplicated attribute. Use a constructor that sets the type you want, or set it once with .Type().`,
 		},
 		{
 			name: "split statements: SetAttribute duplicating the local's constructor",
@@ -74,8 +74,8 @@ func f(inputType string) {
 	inp.SetAttribute("type", inputType)
 	_ = inp
 }`,
-			want:    `SetAttribute("type", ...) duplicates the type attribute input.Text already sets; both render, and browsers keep the first, so this value never takes effect`,
-			wantFix: `Browsers keep only the first of a duplicated attribute; choose a constructor that sets the type you want, or set it once through .Type()`,
+			want:    `SetAttribute("type", ...) sets type again after input.Text. Both render, and the browser uses the first, so this value has no effect.`,
+			wantFix: `A browser keeps the first copy of a duplicated attribute. Use a constructor that sets the type you want, or set it once with .Type().`,
 		},
 		{
 			name: "split statements: SetAttribute duplicating a method in the local's chain",
@@ -88,8 +88,8 @@ func f() {
 	box.SetAttribute("id", "search")
 	_ = box
 }`,
-			want:    `SetAttribute("id", ...) duplicates the id attribute .ID() already set (line 6); both render, and browsers keep the first, so this value never takes effect`,
-			wantFix: `Fold the value into the .ID() call; browsers keep only the first of a duplicated attribute`,
+			want:    `SetAttribute("id", ...) sets id again after .ID() on line 6. Both render, and the browser uses the first, so this value has no effect.`,
+			wantFix: `Move the value into the .ID() call. A browser keeps the first copy of a duplicated attribute.`,
 		},
 	}
 

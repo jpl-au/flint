@@ -87,10 +87,10 @@ func build() {}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// These tests may fail to parse because select/main/var are
-			// reserved keywords. The import check runs before parse for
-			// these cases, so we test via the check function directly
-			// for the ones that won't parse. For valid Go, use Source.
+			// select, main and var are reserved keywords, so a source that
+			// imports them does not parse. Source is used for input that
+			// parses; the check function is called directly for input that
+			// does not.
 			diags, err := l.Source("test.go", tt.src)
 
 			if tt.want == "" {
@@ -106,16 +106,10 @@ func build() {}
 				return
 			}
 
-			// For reserved keyword imports, the source may not parse
-			// because Go itself rejects these keywords. That's fine -
-			// we still expect the diagnostic if we got any diags.
 			if err != nil {
-				// Source couldn't parse the file. This is expected
-				// for "import html5/select" etc. The check currently
-				// runs after parsing, so it won't fire.
-				// This is acceptable - Go itself will reject these
-				// imports with a clear error. The lint check is an
-				// additional safety net for files that do parse.
+				// The check runs after parsing, so it does not fire on a
+				// source Go rejects. The compiler reports those imports
+				// itself; the check covers files that parse.
 				t.Skipf("source did not parse (expected for reserved keywords): %v", err)
 			}
 

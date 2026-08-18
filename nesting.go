@@ -62,7 +62,7 @@ func (l *Linter) checkNesting(fset *token.FileSet, file *ast.File) []Diagnostic 
 				Pos:      fset.Position(arg.Pos()),
 				End:      fset.Position(arg.End()),
 				Severity: Warning,
-				Message:  fmt.Sprintf("%s.%s(...) builds another <%s> element, so this nests <%s> inside <%s>; HTML forbids it and browsers unnest the inner element", childAlias, fn, pkg.Tag, pkg.Tag, pkg.Tag),
+				Message:  fmt.Sprintf("%s.%s(...) builds another <%s> element, which nests <%s> inside <%s>. HTML does not allow this, and the browser moves the inner element out.", childAlias, fn, pkg.Tag, pkg.Tag, pkg.Tag),
 				Fix:      fmt.Sprintf("Restructure so the two <%s> elements are siblings", pkg.Tag),
 			}
 			if fn == "Static" || fn == "Text" || fn == "Textf" {

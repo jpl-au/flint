@@ -23,8 +23,8 @@ import (
 // SetAttribute("type", ...) anywhere on that element duplicates it just as a
 // chained .Type() call would. Both the single-chain form and the
 // split-statement form (constructor assigned to a local, SetAttribute on a
-// later line) are covered; the split form is the shape that shipped a visible
-// password field in the hue-server field audit.
+// later line) are covered. A duplicated type attribute renders twice, and the
+// browser uses the first, so the second value has no effect.
 func (l *Linter) checkDuplicateAttrs(fset *token.FileSet, file *ast.File) []Diagnostic {
 	if l.registry == nil {
 		return nil
@@ -118,8 +118,8 @@ func (l *Linter) checkDuplicateAttrs(fset *token.FileSet, file *ast.File) []Diag
 						Pos:      fset.Position(sel.Sel.Pos()),
 						End:      fset.Position(c.End()),
 						Severity: Warning,
-						Message:  fmt.Sprintf("%s(%q, ...) duplicates the .%s() call earlier in this chain; both render, duplicating the %s attribute", m, key, dedicated, key),
-						Fix:      fmt.Sprintf("Fold the value into the .%s() call; browsers keep only the first of a duplicated attribute", dedicated),
+						Message:  fmt.Sprintf("%s(%q, ...) repeats the .%s() call earlier in this chain. Both render, so the %s attribute appears twice.", m, key, dedicated, key),
+						Fix:      fmt.Sprintf("Move the value into the .%s() call. A browser keeps the first copy of a duplicated attribute.", dedicated),
 					})
 					continue
 				}
@@ -141,7 +141,7 @@ func (l *Linter) checkDuplicateAttrs(fset *token.FileSet, file *ast.File) []Diag
 					Pos:      fset.Position(sel.Sel.Pos()),
 					End:      fset.Position(c.End()),
 					Severity: Warning,
-					Message:  fmt.Sprintf(".%s() overwrites the value set by the earlier .%s() (line %d); only the last value is rendered", m, m, prev.Line),
+					Message:  fmt.Sprintf(".%s() overwrites the value that .%s() set on line %d. Only the last value renders.", m, m, prev.Line),
 					Fix:      fmt.Sprintf("Keep a single .%s() call with the value you want rendered", m),
 				})
 				continue
@@ -198,8 +198,8 @@ func constructorDuplicate(fset *token.FileSet, sel *ast.SelectorExpr, c *ast.Cal
 		Pos:      fset.Position(sel.Sel.Pos()),
 		End:      fset.Position(c.End()),
 		Severity: Warning,
-		Message:  fmt.Sprintf("%s(%q, ...) duplicates the %s attribute %s already sets; both render, and browsers keep the first, so this value never takes effect", call, key, key, ctorLabel),
-		Fix:      fmt.Sprintf("Browsers keep only the first of a duplicated attribute; choose a constructor that sets the %s you want, or set it once through .%s()", key, dedicated),
+		Message:  fmt.Sprintf("%s(%q, ...) sets %s again after %s. Both render, and the browser uses the first, so this value has no effect.", call, key, key, ctorLabel),
+		Fix:      fmt.Sprintf("A browser keeps the first copy of a duplicated attribute. Use a constructor that sets the %s you want, or set it once with .%s().", key, dedicated),
 	}
 }
 
@@ -220,7 +220,7 @@ type localChain struct {
 // rule: a local assigned from a fluent constructor chain, with SetAttribute
 // called on it in a later statement. The chain replay above cannot see it - a
 // bare local.SetAttribute(...) is a spine of one - yet it renders the same
-// duplicate attribute, and it is the shape the hue-server field audit hit.
+// duplicate attribute.
 // Locals are collected file-wide with last-assignment-wins, the same
 // approximation as fluentLocals, and only calls after the assignment count.
 func (l *Linter) checkLocalDuplicateAttrs(fset *token.FileSet, file *ast.File, imports map[string]string) []Diagnostic {
@@ -323,8 +323,8 @@ func (l *Linter) checkLocalDuplicateAttrs(fset *token.FileSet, file *ast.File, i
 				Pos:      fset.Position(sel.Sel.Pos()),
 				End:      fset.Position(call.End()),
 				Severity: Warning,
-				Message:  fmt.Sprintf("%s(%q, ...) duplicates the %s attribute .%s() already set (line %d); both render, and browsers keep the first, so this value never takes effect", name, key, key, dedicated, fset.Position(pos).Line),
-				Fix:      fmt.Sprintf("Fold the value into the .%s() call; browsers keep only the first of a duplicated attribute", dedicated),
+				Message:  fmt.Sprintf("%s(%q, ...) sets %s again after .%s() on line %d. Both render, and the browser uses the first, so this value has no effect.", name, key, key, dedicated, fset.Position(pos).Line),
+				Fix:      fmt.Sprintf("Move the value into the .%s() call. A browser keeps the first copy of a duplicated attribute.", dedicated),
 			})
 			return true
 		}

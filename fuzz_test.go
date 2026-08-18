@@ -6,7 +6,7 @@ import "testing"
 // A linter must survive any input - malformed Go, partial ASTs, unusual tokens -
 // because it runs over whatever a developer (or an AI) happens to write. Parse
 // failures are returned as errors, not panics, so the invariant under test is
-// simply "does not crash": a real defect would be a nil dereference or an
+// "does not crash". A defect here is a nil dereference or an
 // index-out-of-range inside one of the AST-walking checks.
 //
 // Run the seed corpus as a normal regression:

@@ -5,8 +5,9 @@ import (
 	"testing"
 )
 
-// TestNodeAppendScopeFires covers cases that used to stay silent because an
-// unrelated same-named variable confused the name-based scan, and now fire.
+// TestNodeAppendScopeFires covers accumulators that share a name with an
+// unrelated variable in another scope. The scan is name-based, so it must
+// resolve the declaration rather than the name alone.
 func TestNodeAppendScopeFires(t *testing.T) {
 	l := New(FluentRegistry())
 	tests := []struct {
@@ -231,7 +232,7 @@ defer func() {
 			}
 			found := false
 			for _, d := range diags {
-				if strings.Contains(d.Message, "those children will not appear") {
+				if strings.Contains(d.Message, "Those children do not render") {
 					found = true
 				}
 			}
