@@ -132,6 +132,7 @@ func (l *Linter) Source(filename string, src []byte) ([]Diagnostic, error) {
 	diags = append(diags, l.checkImports(fset, file)...)
 	diags = append(diags, l.checkSetAttrChain(fset, file)...)
 	diags = append(diags, l.checkSetAttrKey(fset, file)...)
+	diags = append(diags, l.checkVerbatimKey(fset, file)...)
 	diags = append(diags, l.checkDuplicateAttrs(fset, file)...)
 	diags = append(diags, l.checkURLScheme(fset, file)...)
 	diags = append(diags, l.checkTypedParams(fset, file)...)

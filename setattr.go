@@ -237,3 +237,113 @@ func fluentLocals(file *ast.File, imports map[string]string, reg *Registry) map[
 
 	return locals
 }
+
+// verbatimKeyMethods lists the element methods whose first argument is an
+// attribute key that renders verbatim.
+var verbatimKeyMethods = map[string]bool{
+	"SetAttribute":    true,
+	"SetAttributeRaw": true,
+	"SetData":         true,
+	"SetAria":         true,
+	"SetEvent":        true,
+}
+
+// verbatimKeyFuncs lists the node package-level twins. Their key is the
+// second argument, after the element.
+var verbatimKeyFuncs = map[string]bool{
+	"SetAttribute":    true,
+	"SetAttributeRaw": true,
+	"SetData":         true,
+	"SetAria":         true,
+}
+
+// nodeImportPath is the fluent node package, home of the package-level
+// attribute setters.
+const nodeImportPath = "github.com/jpl-au/fluent/node"
+
+// checkVerbatimKey reports key-value setter calls whose key is built at run
+// time. The key is written to the rendered output verbatim - the value is
+// escaped, the key is not - so a key derived from user input changes the
+// markup structure. A literal key, or a concatenation of literals, is fixed
+// and passes.
+//
+// The check is AST-only, so a named constant used as a key also fires; the
+// fix text names that case a false positive. Only calls on fluent receivers
+// and on the fluent node package are checked.
+func (l *Linter) checkVerbatimKey(fset *token.FileSet, file *ast.File) []Diagnostic {
+	if l.registry == nil {
+		return nil
+	}
+
+	imports := resolveImports(file)
+	locals := fluentLocals(file, imports, l.registry)
+
+	var diags []Diagnostic
+
+	ast.Inspect(file, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		name := sel.Sel.Name
+
+		// The key argument's position depends on the call form: first on an
+		// element method, second on a node package-level function.
+		var key ast.Expr
+		switch {
+		case verbatimKeyFuncs[name] && isPackageIdent(sel.X, imports, nodeImportPath):
+			if len(call.Args) < 2 {
+				return true
+			}
+			key = call.Args[1]
+		case verbatimKeyMethods[name] && l.isFluentReceiver(sel.X, imports, locals):
+			if len(call.Args) < 1 {
+				return true
+			}
+			key = call.Args[0]
+		default:
+			return true
+		}
+
+		if isStaticString(key) {
+			return true
+		}
+
+		diags = append(diags, Diagnostic{
+			Check:    "verbatim-key",
+			Pos:      fset.Position(key.Pos()),
+			End:      fset.Position(key.End()),
+			Severity: Warning,
+			Message:  fmt.Sprintf("%s key is %s, and keys render verbatim; a key from user input changes the markup structure", name, describeExpr(key)),
+			Fix:      "Pass a fixed, developer-controlled key. Fluent escapes the value but writes the key as given. If this key is a constant or otherwise fixed, the warning is a false positive.",
+		})
+
+		return true
+	})
+
+	return diags
+}
+
+// isPackageIdent reports whether expr is a bare identifier that resolves to
+// the given import path.
+func isPackageIdent(expr ast.Expr, imports map[string]string, path string) bool {
+	id, ok := unparen(expr).(*ast.Ident)
+	return ok && imports[id.Name] == path
+}
+
+// isStaticString reports whether expr is a compile-time string: a string
+// literal, or a concatenation of compile-time strings.
+func isStaticString(expr ast.Expr) bool {
+	switch e := unparen(expr).(type) {
+	case *ast.BasicLit:
+		return e.Kind == token.STRING
+	case *ast.BinaryExpr:
+		return e.Op == token.ADD && isStaticString(e.X) && isStaticString(e.Y)
+	}
+	return false
+}

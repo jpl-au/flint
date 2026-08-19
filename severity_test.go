@@ -62,6 +62,16 @@ func TestSeverity(t *testing.T) {
 			wantSeverity: Warning,
 		},
 
+		{
+			name: "checkVerbatimKey run-time key",
+			src: wrapWithImports(
+				[]string{"github.com/jpl-au/fluent/html5/div"},
+				`k := "x-data"; _ = div.New().SetData(k, "v")`,
+			),
+			wantMsg:      "keys render verbatim",
+			wantSeverity: Warning,
+		},
+
 		// Errors: code is incorrect.
 		{
 			name: "checkSymbols unknown package-level function",

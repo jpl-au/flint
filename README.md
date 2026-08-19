@@ -42,6 +42,7 @@ The first column is the stable check name, printed with every diagnostic (`warni
 | `static` | warning | `Static()` given something other than a string literal. The paired-constructor idiom is exempt: a function whose name ends in `Static` forwarding its own parameter is the contract, not a violation |
 | `raw-text` | warning | `RawText()` given a non-literal, which skips HTML escaping |
 | `setattr-key` | warning | `SetAttribute()` where a dedicated typed method exists |
+| `verbatim-key` | warning | A key built at run time on `SetAttribute()`, `SetData()`, `SetAria()` or `SetEvent()`. Keys render verbatim - the value is escaped, the key is not - so a key from user input changes the markup structure. A named constant also fires; the `fix:` names that case a false positive |
 | `duplicate-attr` | warning | An attribute set twice: a repeated setter whose last value silently wins, or `SetAttribute()` duplicating an attribute a dedicated method - or the chain's constructor, `input.Text` pins `type="text"` - already set, in the same chain or on a later line |
 | `allow` | warning | A malformed `//flint:allow` directive, which would silently suppress nothing |
 | `url-scheme` | warning | A URL literal whose scheme fluent's runtime filter rejects (`javascript:`, `data:`, ...); it renders as the `#fluent-unsafe-url` sentinel |
