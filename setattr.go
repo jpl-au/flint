@@ -54,11 +54,12 @@ func (l *Linter) checkSetAttrChain(fset *token.FileSet, file *ast.File) []Diagno
 		}
 
 		diags = append(diags, Diagnostic{
-			Check:   "setattr-chain",
-			Pos:     fset.Position(sel.Sel.Pos()),
-			End:     fset.Position(sel.Sel.End()),
-			Message: innerSel.Sel.Name + " does not return the element; cannot chain ." + sel.Sel.Name + "() after it",
-			Fix:     "Call " + innerSel.Sel.Name + " separately, or use SetData/SetAria which do support chaining",
+			Check:    "setattr-chain",
+			Severity: Error,
+			Pos:      fset.Position(sel.Sel.Pos()),
+			End:      fset.Position(sel.Sel.End()),
+			Message:  innerSel.Sel.Name + " does not return the element; cannot chain ." + sel.Sel.Name + "() after it",
+			Fix:      "Call " + innerSel.Sel.Name + " separately, or use SetData/SetAria which do support chaining",
 		})
 
 		return true

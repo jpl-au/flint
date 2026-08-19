@@ -19,7 +19,7 @@ flint views/home.go      # Check a single file
 cat file.go | flint -    # Read from stdin
 ```
 
-Exit codes: `0` clean or advisory-only, `1` errors found, `2` usage or I/O error. Run `flint -h` for the full flag reference.
+Exit codes: `0` nothing found at or above the `-fail-on` level, `1` one or more diagnostics at or above it, `2` usage or I/O error. The default level is `warning`, so any error or warning fails the run. Pass `-fail-on=error` to fail on errors alone, or `-fail-on=never` to report without failing. Run `flint -h` for the full flag reference.
 
 Beyond linting, `-info` prints an element's API surface straight from the registry - types, constructors, methods, typed parameters, attribute mappings - so you can look up what an element offers without leaving the terminal. Deprecated entries carry their deprecation note.
 
@@ -30,7 +30,7 @@ flint -info input ctors attrs
 
 ## What it checks
 
-The first column is the stable check name, printed with every diagnostic (`warning[setattr-key]: ...`) and carried in `-json` output and telemetry. The severity decides whether the run fails: only **error** sets exit code `1`.
+The first column is the stable check name, printed with every diagnostic (`warning[setattr-key]: ...`) and carried in `-json` output and telemetry. The severity decides whether the run fails, against the `-fail-on` level.
 
 | Check | Severity | Catches |
 |-------|----------|---------|
@@ -59,13 +59,19 @@ Each diagnostic carries a `fix:` line describing the correction for the code it 
 
 ## Severity levels
 
-- **error** - incorrect code that will not compile (a missing symbol, wrong
-  arity, a chain that cannot compile). Sets exit code `1`.
-- **warning** - code that compiles but carries a real reason to change: a
-  security or correctness hazard, a silent bug, a duplicate attribute, or a
-  typed API sidestepped. Reported, but does not fail the run.
-- **info** - advisory. The code is correct and fine as written; an optional
-  alternative exists. Reported, never fails the run.
+- **error** - incorrect code that will not compile (a missing symbol, wrong arity, a chain that cannot compile). The Go compiler rejects this code too, so flint reports it first.
+- **warning** - code that compiles but carries a real reason to change: a security or correctness hazard, a silent bug, a duplicate attribute, or a typed API sidestepped. This tier holds what only flint can see.
+- **info** - advisory. The code is correct and fine as written; an optional alternative exists. Never fails the run, at any `-fail-on` level.
+
+`-fail-on` sets the lowest severity that exits `1`:
+
+| Level | Exits `1` on |
+|-------|--------------|
+| `error` | errors only |
+| `warning` (default) | errors and warnings |
+| `never` | nothing; always exits `0` |
+
+The default is `warning` because the error tier duplicates the compiler. A build step already rejects every error flint reports, so failing on errors alone would never fail a run that `go build` had not failed first.
 
 ## Suppressing a diagnostic
 

@@ -151,6 +151,15 @@ _ = div.New(rows...)`,
 				t.Fatalf("Source() returned error: %v", err)
 			}
 
+			// The zero value of Severity is Unset. A check that omits the
+			// field reports it, so every diagnostic the corpus produces is
+			// tested, not only the one this case matches.
+			for _, d := range diags {
+				if d.Severity == Unset {
+					t.Errorf("check %q reported %q with no severity set", d.Check, d.Message)
+				}
+			}
+
 			var found bool
 			for _, d := range diags {
 				if !strings.Contains(d.Message, tt.wantMsg) {

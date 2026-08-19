@@ -8,7 +8,7 @@ flint ./...
 
 Severities: an **error** does not compile and you must fix it. A **warning** compiles but has a reason to change. An **info** is advisory and safe to leave.
 
-Exit codes: `0` clean or advisory-only, `1` errors found, `2` usage or I/O error.
+Exit codes: `0` nothing found at or above the `-fail-on` level, `1` one or more diagnostics at or above it, `2` usage or I/O error. `-fail-on` takes `error`, `warning` (the default) or `never`. Info never fails a run at any level.
 
 Every diagnostic prints its check name, as in `warning[setattr-key]: ...`. Flint prints each `fix:` paragraph once per run. A later diagnostic that shares an earlier fix prints its message alone. To read that fix, find the first diagnostic for the same check, or use `-json`.
 

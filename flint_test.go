@@ -3,11 +3,12 @@ package flint
 import "testing"
 
 func TestSeverityConstants(t *testing.T) {
-	// Error must be the zero value. Check functions that produce
-	// errors rely on the Diagnostic{} default severity being Error.
+	// Unset must be the zero value. A check that omits the Severity field
+	// then reports Unset, which TestSeverity catches, rather than
+	// silently reporting an error.
 	var zero Severity
-	if zero != Error {
-		t.Fatalf("zero value of Severity = %v, want Error", zero)
+	if zero != Unset {
+		t.Fatalf("zero value of Severity = %v, want Unset", zero)
 	}
 
 	if Error.String() != "error" {

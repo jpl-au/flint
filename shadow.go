@@ -38,7 +38,7 @@ func (l *Linter) checkShadows(fset *token.FileSet, file *ast.File) []Diagnostic 
 
 	// One report per name per function keeps a repeatedly bound name (a := in
 	// several branches, say) from drowning the message in duplicates.
-	report := func(seen map[string]bool, id *ast.Ident, kind string) {
+	report := func(seen map[string]bool, id *ast.Ident, decl string) {
 		if id == nil || !fluent[id.Name] || seen[id.Name] {
 			return
 		}
@@ -48,8 +48,8 @@ func (l *Linter) checkShadows(fset *token.FileSet, file *ast.File) []Diagnostic 
 			Pos:      fset.Position(id.Pos()),
 			End:      fset.Position(id.End()),
 			Severity: Warning,
-			Message:  fmt.Sprintf("%s %q shadows the fluent package imported as %q", kind, id.Name, id.Name),
-			Fix:      fmt.Sprintf("Rename the %s, or give the import an alias. While the name is shadowed, %s.X looks like the package but is not, and other diagnostics for %q may be wrong.", kind, id.Name, id.Name),
+			Message:  fmt.Sprintf("%s %q shadows the fluent package imported as %q", decl, id.Name, id.Name),
+			Fix:      fmt.Sprintf("Rename the %s, or give the import an alias. While the name is shadowed, %s.X looks like the package but is not, and other diagnostics for %q may be wrong.", decl, id.Name, id.Name),
 		})
 	}
 

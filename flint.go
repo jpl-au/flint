@@ -23,9 +23,13 @@ import (
 type Severity int
 
 const (
+	// Unset is the zero value. No check produces it. A diagnostic carrying
+	// it omitted the Severity field, which TestSeverity rejects.
+	Unset Severity = iota
+
 	// Error indicates code that is incorrect: a missing symbol,
 	// wrong arity, or a chain that will not compile.
-	Error Severity = iota
+	Error
 
 	// Warning indicates code that compiles and runs but carries a real
 	// reason to change: a security or correctness hazard, a silent bug,
@@ -40,12 +44,14 @@ const (
 // String returns the lowercase name of the severity level.
 func (s Severity) String() string {
 	switch s {
+	case Error:
+		return "error"
 	case Warning:
 		return "warning"
 	case Info:
 		return "info"
 	default:
-		return "error"
+		return "unset"
 	}
 }
 

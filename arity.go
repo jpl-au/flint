@@ -58,11 +58,12 @@ func (l *Linter) checkArity(fset *token.FileSet, file *ast.File) []Diagnostic {
 		got := len(call.Args)
 		if got != expected {
 			diags = append(diags, Diagnostic{
-				Check:   "arity",
-				Pos:     fset.Position(call.Lparen),
-				End:     fset.Position(call.Rparen),
-				Message: fmt.Sprintf("%s.%s() expects %d argument(s), got %d", pkgName(importPath), funcName, expected, got),
-				Fix:     fmt.Sprintf("Check the %s.%s signature for the correct number of arguments", pkgName(importPath), funcName),
+				Check:    "arity",
+				Severity: Error,
+				Pos:      fset.Position(call.Lparen),
+				End:      fset.Position(call.Rparen),
+				Message:  fmt.Sprintf("%s.%s() expects %d argument(s), got %d", pkgName(importPath), funcName, expected, got),
+				Fix:      fmt.Sprintf("Check the %s.%s signature for the correct number of arguments", pkgName(importPath), funcName),
 			})
 		}
 
@@ -145,11 +146,12 @@ func (l *Linter) checkMethodArity(fset *token.FileSet, file *ast.File) []Diagnos
 		got := len(call.Args)
 		if got != expected {
 			diags = append(diags, Diagnostic{
-				Check:   "method-arity",
-				Pos:     fset.Position(call.Lparen),
-				End:     fset.Position(call.Rparen),
-				Message: fmt.Sprintf(".%s() expects %d argument(s), got %d", method, expected, got),
-				Fix:     fmt.Sprintf("Check the %s method's signature for the correct number of arguments", method),
+				Check:    "method-arity",
+				Severity: Error,
+				Pos:      fset.Position(call.Lparen),
+				End:      fset.Position(call.Rparen),
+				Message:  fmt.Sprintf(".%s() expects %d argument(s), got %d", method, expected, got),
+				Fix:      fmt.Sprintf("Check the %s method's signature for the correct number of arguments", method),
 			})
 		}
 

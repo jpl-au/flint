@@ -15,7 +15,7 @@ func TestFluentRegistryLoads(t *testing.T) {
 	checks := []struct {
 		path   string
 		symbol string
-		kind   string // "func", "method", or "var"
+		decl   string // "func", "method", or "var"
 	}{
 		{"github.com/jpl-au/fluent/html5/div", "New", "func"},
 		{"github.com/jpl-au/fluent/html5/div", "Class", "method"},
@@ -38,7 +38,7 @@ func TestFluentRegistryLoads(t *testing.T) {
 		}
 
 		var found bool
-		switch c.kind {
+		switch c.decl {
 		case "func":
 			_, found = pkg.Functions[c.symbol]
 		case "method":
@@ -48,7 +48,7 @@ func TestFluentRegistryLoads(t *testing.T) {
 		}
 
 		if !found {
-			t.Errorf("registry missing %s %s.%s", c.kind, c.path, c.symbol)
+			t.Errorf("registry missing %s %s.%s", c.decl, c.path, c.symbol)
 		}
 	}
 }

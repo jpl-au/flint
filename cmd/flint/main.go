@@ -38,6 +38,7 @@
 //	-no-registry        Disable registry-backed validation (literal and SetAttribute-chain checks still run)
 //	-include-tests      Include _test.go files in the analysis
 //	-json               Emit diagnostics as JSON, one object per line, and no summary
+//	-fail-on <level>    Lowest severity that fails the run: error, warning (default) or never
 //	-info <element>     Show registry info for an element and exit
 //	-telemetry <value>  Set telemetry mode (off|local|on) or show it (status), then exit
 //	-version            Print flint version and exit
@@ -53,9 +54,13 @@
 //
 // Exit codes:
 //
-//	0  No errors found (warnings may be present)
-//	1  One or more errors found
+//	0  Nothing found at or above the -fail-on level
+//	1  One or more diagnostics at or above the -fail-on level
 //	2  Usage or I/O error (including unknown element for -info or unknown -telemetry mode)
+//
+// The default level is warning, so any error or warning fails the run. Info
+// diagnostics never fail a run at any level: they describe code that is
+// correct as written.
 package main
 
 import (
@@ -77,6 +82,7 @@ func main() {
 	noRegistry := flag.Bool("no-registry", false, "Disable symbol validation")
 	includeTests := flag.Bool("include-tests", false, "Include _test.go files")
 	jsonOut := flag.Bool("json", false, "Emit diagnostics as JSON, one object per line")
+	failOn := flag.String("fail-on", "warning", "Lowest severity that fails the run (error|warning|never)")
 	infoElement := flag.String("info", "", "Show registry info for an element (e.g. -info div, or -info svg:rect for a shape within a package)")
 	telemetryMode := flag.String("telemetry", "", "Set telemetry mode (off|local|on) or show it (status)")
 	showVersion := flag.Bool("version", false, "Print flint version and exit")
@@ -96,6 +102,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  attributes, attrs\n")
 		fmt.Fprintf(os.Stderr, "  vars\n")
 		fmt.Fprintf(os.Stderr, "  elements\n\n")
+		fmt.Fprintf(os.Stderr, "Fail-on levels (which severities make the run exit 1):\n")
+		fmt.Fprintf(os.Stderr, "  error      Only errors\n")
+		fmt.Fprintf(os.Stderr, "  warning    Errors and warnings (default)\n")
+		fmt.Fprintf(os.Stderr, "  never      Report only; always exit 0\n\n")
 		fmt.Fprintf(os.Stderr, "Telemetry (opt-in, off by default):\n")
 		fmt.Fprintf(os.Stderr, "  -telemetry local     Record diagnostics and attribute usage to local .tlf files\n")
 		fmt.Fprintf(os.Stderr, "  -telemetry off       Disable collection\n")
@@ -104,6 +114,12 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+
+	fail, err := parseFailOn(*failOn)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "flint: %v\n", err)
+		os.Exit(2)
+	}
 
 	if *showVersion {
 		fmt.Println(version())
@@ -199,12 +215,50 @@ func main() {
 	// Flush telemetry before any os.Exit below, which would skip a deferred close.
 	sink.close()
 
+	p.summary(errors, warnings)
+
 	if hadErrors {
 		os.Exit(2)
 	}
-	p.summary(errors, warnings)
-	if errors > 0 {
+	if fail.reached(errors, warnings) {
 		os.Exit(1)
+	}
+}
+
+// failLevel is the lowest severity that makes a run exit non-zero. The zero
+// value is failWarning, which is also the -fail-on default, so a level left
+// unset fails closed rather than passing a run holding diagnostics.
+type failLevel int
+
+const (
+	failWarning failLevel = iota
+	failError
+	failNever
+)
+
+// parseFailOn maps a -fail-on flag value to its level.
+func parseFailOn(s string) (failLevel, error) {
+	switch s {
+	case "never":
+		return failNever, nil
+	case "error":
+		return failError, nil
+	case "warning":
+		return failWarning, nil
+	}
+	return failWarning, fmt.Errorf("unknown -fail-on value %q; use error, warning or never", s)
+}
+
+// reached reports whether a run holding these counts exits 1. Info diagnostics
+// describe code that is correct as written, so no level counts them.
+func (f failLevel) reached(errors, warnings int) bool {
+	switch f {
+	case failNever:
+		return false
+	case failError:
+		return errors > 0
+	default: // failWarning, and the zero value.
+		return errors+warnings > 0
 	}
 }
 

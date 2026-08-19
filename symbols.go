@@ -44,11 +44,12 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 			}
 
 			diags = append(diags, Diagnostic{
-				Check:   "symbols",
-				Pos:     fset.Position(n.Sel.Pos()),
-				End:     fset.Position(n.Sel.End()),
-				Message: fmt.Sprintf("%s.%s does not exist", pkgName(importPath), name),
-				Fix:     fmt.Sprintf("Check the %s package for available functions and variables", pkgName(importPath)),
+				Check:    "symbols",
+				Severity: Error,
+				Pos:      fset.Position(n.Sel.Pos()),
+				End:      fset.Position(n.Sel.End()),
+				Message:  fmt.Sprintf("%s.%s does not exist", pkgName(importPath), name),
+				Fix:      fmt.Sprintf("Check the %s package for available functions and variables", pkgName(importPath)),
 			})
 
 		case *ast.CallExpr:
@@ -92,11 +93,12 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 							return true
 						}
 						diags = append(diags, Diagnostic{
-							Check:   "symbols",
-							Pos:     fset.Position(sel.Sel.Pos()),
-							End:     fset.Position(sel.Sel.End()),
-							Message: fmt.Sprintf("method %s does not exist on %s, returned by %s.%s", method, shortType(ret), alias, fn),
-							Fix:     fmt.Sprintf("check the methods available on %s", shortType(ret)),
+							Check:    "symbols",
+							Severity: Error,
+							Pos:      fset.Position(sel.Sel.Pos()),
+							End:      fset.Position(sel.Sel.End()),
+							Message:  fmt.Sprintf("method %s does not exist on %s, returned by %s.%s", method, shortType(ret), alias, fn),
+							Fix:      fmt.Sprintf("check the methods available on %s", shortType(ret)),
 						})
 						return true
 					}
@@ -142,11 +144,12 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 			}
 
 			diags = append(diags, Diagnostic{
-				Check:   "symbols",
-				Pos:     fset.Position(sel.Sel.Pos()),
-				End:     fset.Position(sel.Sel.End()),
-				Message: fmt.Sprintf("method %s does not exist on this element", method),
-				Fix:     "Check the element package for available methods",
+				Check:    "symbols",
+				Severity: Error,
+				Pos:      fset.Position(sel.Sel.Pos()),
+				End:      fset.Position(sel.Sel.End()),
+				Message:  fmt.Sprintf("method %s does not exist on this element", method),
+				Fix:      "Check the element package for available methods",
 			})
 		}
 

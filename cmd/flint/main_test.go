@@ -179,3 +179,71 @@ func TestTextPrinterSummary(t *testing.T) {
 		t.Errorf("summary = %q, want %q", got, want)
 	}
 }
+
+func TestParseFailOn(t *testing.T) {
+	for _, tt := range []struct {
+		value string
+		want  failLevel
+	}{
+		{"error", failError},
+		{"warning", failWarning},
+		{"never", failNever},
+	} {
+		got, err := parseFailOn(tt.value)
+		if err != nil {
+			t.Errorf("parseFailOn(%q) returned error: %v", tt.value, err)
+			continue
+		}
+		if got != tt.want {
+			t.Errorf("parseFailOn(%q) = %v, want %v", tt.value, got, tt.want)
+		}
+	}
+
+	// The zero value is the default level, so a failLevel left unset fails on
+	// warnings rather than passing the run.
+	var zero failLevel
+	if zero != failWarning {
+		t.Errorf("zero value of failLevel = %v, want failWarning", zero)
+	}
+	if !zero.reached(0, 1) {
+		t.Error("zero-value failLevel passed a run holding a warning")
+	}
+
+	// parseFailOn returns the default level alongside its error, so a caller
+	// that ignores the error still fails closed.
+	if got, _ := parseFailOn("bogus"); got != failWarning {
+		t.Errorf("parseFailOn(\"bogus\") = %v, want failWarning", got)
+	}
+
+	if _, err := parseFailOn("info"); err == nil {
+		t.Error("parseFailOn(\"info\") returned no error; info never fails a run")
+	}
+	if _, err := parseFailOn(""); err == nil {
+		t.Error("parseFailOn(\"\") returned no error")
+	}
+}
+
+// TestFailLevelReached locks the exit verdict for each level. Info diagnostics
+// are absent from the counts by design, so no level can act on them.
+func TestFailLevelReached(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		level    failLevel
+		errors   int
+		warnings int
+		want     bool
+	}{
+		{"error level ignores warnings", failError, 0, 3, false},
+		{"error level catches errors", failError, 1, 0, true},
+		{"warning level catches warnings", failWarning, 0, 1, true},
+		{"warning level catches errors", failWarning, 2, 0, true},
+		{"warning level passes a clean run", failWarning, 0, 0, false},
+		{"never level ignores everything", failNever, 5, 5, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.level.reached(tt.errors, tt.warnings); got != tt.want {
+				t.Errorf("reached(%d, %d) = %v, want %v", tt.errors, tt.warnings, got, tt.want)
+			}
+		})
+	}
+}

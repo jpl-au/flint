@@ -55,14 +55,14 @@ func stmtHasAppendTo(stmt ast.Stmt, name string) bool {
 	return found
 }
 
-// conditionalKind describes how an appending if-statement maps onto Fluent's
+// conditionalShape describes how an appending if-statement maps onto Fluent's
 // conditional helpers.
-type conditionalKind int
+type conditionalShape int
 
 const (
-	condWhen   conditionalKind = iota // node.When(cond, child)
-	condUnless                        // node.Unless(cond, child)
-	condBoth                          // node.Condition(cond).True(child).False(child)
+	condWhen   conditionalShape = iota // node.When(cond, child)
+	condUnless                         // node.Unless(cond, child)
+	condBoth                           // node.Condition(cond).True(child).False(child)
 )
 
 // appendClass records the control-flow shapes that wrap the appends to an
@@ -97,7 +97,7 @@ func (c *appendClass) classify(stmt ast.Stmt, name string) {
 			c.branch = true
 			return
 		}
-		switch ifKind(s, name) {
+		switch ifShape(s, name) {
 		case condUnless:
 			c.unless = true
 		case condBoth:
@@ -108,10 +108,10 @@ func (c *appendClass) classify(stmt ast.Stmt, name string) {
 	}
 }
 
-// ifKind decides which conditional idiom an appending if maps to: Condition when
+// ifShape decides which conditional idiom an appending if maps to: Condition when
 // both branches append, Unless when only the else branch appends or the condition
 // is negated, and When otherwise.
-func ifKind(s *ast.IfStmt, name string) conditionalKind {
+func ifShape(s *ast.IfStmt, name string) conditionalShape {
 	thenAppends := stmtHasAppendTo(s.Body, name)
 	elseAppends := s.Else != nil && stmtHasAppendTo(s.Else, name)
 	switch {
