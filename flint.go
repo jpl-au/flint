@@ -138,6 +138,7 @@ func (l *Linter) Source(filename string, src []byte) ([]Diagnostic, error) {
 	diags = append(diags, l.checkTypedParams(fset, file)...)
 	diags = append(diags, l.checkConstructors(fset, file)...)
 	diags = append(diags, l.checkTypedConstructors(fset, file)...)
+	diags = append(diags, l.checkDeferredConstructors(fset, file)...)
 	diags = append(diags, l.checkSymbols(fset, file)...)
 	diags = append(diags, l.checkDeprecated(fset, file)...)
 	diags = append(diags, l.checkArity(fset, file)...)

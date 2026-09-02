@@ -39,15 +39,15 @@ The first column is the stable check name, printed with every diagnostic (`warni
 | `method-arity` | error | Wrong argument count on a method call |
 | `imports` | error | A Go reserved keyword as an import path, in place of Fluent's alternative |
 | `setattr-chain` | error | Chaining after `SetAttribute()`, which does not return the element |
-| `static` | warning | `Static()` given something other than a string literal. The paired-constructor idiom is exempt: a function whose name ends in `Static` forwarding its own parameter is the contract, not a violation |
+| `static` | warning | `Static()` given something other than a string literal. A function whose name ends in `Static` and forwards its own parameter is exempt, because that is the paired-constructor idiom |
 | `raw-text` | warning | `RawText()` given a non-literal, which skips HTML escaping |
 | `setattr-key` | warning | `SetAttribute()` where a dedicated typed method exists |
 | `verbatim-key` | warning | A key built at run time on `SetAttribute()`, `SetData()`, `SetAria()` or `SetEvent()`. Keys render verbatim - the value is escaped, the key is not - so a key from user input changes the markup structure. A named constant also fires; the `fix:` names that case a false positive |
-| `duplicate-attr` | warning | An attribute set twice: a repeated setter whose last value silently wins, or `SetAttribute()` duplicating an attribute a dedicated method - or the chain's constructor, `input.Text` pins `type="text"` - already set, in the same chain or on a later line |
+| `duplicate-attr` | warning | An attribute set twice in the same chain or on a later line. Either a repeated setter, where the last value silently wins, or `SetAttribute()` on an attribute that a dedicated method or the constructor already set, as `input.Text` sets `type="text"` |
 | `allow` | warning | A malformed `//flint:allow` directive, which would silently suppress nothing |
 | `url-scheme` | warning | A URL literal whose scheme fluent's runtime filter rejects (`javascript:`, `data:`, ...); it renders as the `#fluent-unsafe-url` sentinel |
 | `typed-params` | warning | A raw string where a typed constant is expected, or `Custom()` re-creating a predefined constant; the `fix:` names the exact constant when the value matches one |
-| `typed-constructors` | warning | `New()` with same-package children that a typed constructor expresses |
+| `typed-constructors` | warning | `New()` with same-package children that a typed constructor expresses, or `New()` holding a single `node.Map` or `node.Funcs` run where a deferred typed constructor such as `ItemsOf` exists |
 | `shadows` | warning | A local name shadowing an imported Fluent package |
 | `nesting` | warning | A child from the same element package inside `a`, `button`, `form` or `label`, which HTML forbids nesting in themselves; `a.New(a.Static("Back"))` builds an anchor inside an anchor, and browsers unnest it |
 | `deprecated` | warning | Use of a deprecated Fluent API; the `fix:` names the replacement |
@@ -61,7 +61,7 @@ Each diagnostic carries a `fix:` line describing the correction for the code it 
 ## Severity levels
 
 - **error** - incorrect code that will not compile (a missing symbol, wrong arity, a chain that cannot compile). The Go compiler rejects this code too, so flint reports it first.
-- **warning** - code that compiles but carries a real reason to change: a security or correctness hazard, a silent bug, a duplicate attribute, or a typed API sidestepped. This tier holds what only flint can see.
+- **warning** - code that compiles but carries a real reason to change: a security or correctness hazard, a silent bug, a duplicate attribute, or a typed API sidestepped. Only flint reports this tier.
 - **info** - advisory. The code is correct and fine as written; an optional alternative exists. Never fails the run, at any `-fail-on` level.
 
 `-fail-on` sets the lowest severity that exits `1`:
@@ -84,18 +84,6 @@ return div.New(text.RawText(markup))
 ```
 
 The check name is required and is the one printed with the diagnostic; the reason is required too, so the next reader inherits the judgement instead of re-auditing the line. A directive on its own line covers the next line; a trailing directive covers its own line. There is deliberately no file- or project-wide form: a suppression is a per-site decision.
-
-## Telemetry
-
-Opt-in and **off by default**: nothing is collected, and nothing leaves your
-machine, until you turn it on. When enabled, runs are recorded as greppable
-text files beneath your user cache directory.
-
-```bash
-flint -telemetry status   # Show the current mode
-flint -telemetry local    # Record runs to local .tlf files
-flint -telemetry off      # Stop collecting
-```
 
 ## Library usage
 
@@ -123,6 +111,16 @@ Flint parses Go source using `go/ast` and walks the AST looking for patterns tha
 A generated registry (`FluentRegistry()`) provides the complete API surface of every Fluent package - functions, methods, types, variables, typed parameters, attribute mappings, and what each constructor already sets. The registry is generated from the same YAML specifications that produce the Fluent element packages, so it stays in sync automatically.
 
 Generated files (containing `// Code generated` and `DO NOT EDIT`) are skipped automatically.
+
+## Telemetry
+
+Opt-in and **off by default**: nothing is collected, and nothing leaves your machine, until you turn it on. When enabled, runs are recorded as greppable text files beneath your user cache directory.
+
+```bash
+flint -telemetry status   # Show the current mode
+flint -telemetry local    # Record runs to local .tlf files
+flint -telemetry off      # Stop collecting
+```
 
 ## Licence
 

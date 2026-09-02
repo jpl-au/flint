@@ -94,8 +94,8 @@ func (l *Linter) checkDuplicateAttrs(fset *token.FileSet, file *ast.File) []Diag
 		// Replay the chain in source order, remembering the first call of
 		// each overwriting attribute method.
 		first := map[string]token.Position{}
-		for i := len(spine) - 1; i >= 0; i-- {
-			c := spine[i]
+		for _, c := range slices.Backward(spine) {
+
 			sel := c.Fun.(*ast.SelectorExpr)
 			m := sel.Sel.Name
 
