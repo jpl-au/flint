@@ -93,11 +93,16 @@ func (l *Linter) checkDuplicateAttrs(fset *token.FileSet, file *ast.File) []Diag
 
 		// Replay the chain in source order, remembering the first call of
 		// each overwriting attribute method.
-		first := map[string]token.Position{}
+		first := map[string]setterCall{}
 		for _, c := range slices.Backward(spine) {
 
 			sel := c.Fun.(*ast.SelectorExpr)
 			m := sel.Sel.Name
+			if id, ok := unparen(sel.X).(*ast.Ident); ok {
+				if _, imported := imports[id.Name]; imported {
+					continue // package constructors are accounted for by ctorSet
+				}
+			}
 
 			if m == "SetAttribute" || m == "SetAttributeRaw" {
 				if len(c.Args) < 1 || !isStringLiteral(c.Args[0]) {
@@ -112,13 +117,13 @@ func (l *Linter) checkDuplicateAttrs(fset *token.FileSet, file *ast.File) []Diag
 				if dedicated == "" {
 					continue
 				}
-				if _, set := first[dedicated]; set {
+				if previous, set := first[dedicated]; set {
 					diags = append(diags, Diagnostic{
 						Check:    "duplicate-attr",
 						Pos:      fset.Position(sel.Sel.Pos()),
 						End:      fset.Position(c.End()),
 						Severity: Warning,
-						Message:  fmt.Sprintf("%s(%q, ...) repeats the .%s() call earlier in this chain. Both render, so the %s attribute appears twice.", m, key, dedicated, key),
+						Message:  fmt.Sprintf("%s(%q, ...) repeats the .%s() call earlier in this chain. Both render, so the %s attribute appears twice.", m, key, previous.name, key),
 						Fix:      fmt.Sprintf("Move the value into the .%s() call. A browser keeps the first copy of a duplicated attribute.", dedicated),
 					})
 					continue
@@ -129,25 +134,26 @@ func (l *Linter) checkDuplicateAttrs(fset *token.FileSet, file *ast.File) []Diag
 				continue
 			}
 
-			if !attrMethodSet[m] {
+			canonical := canonicalSetter(pkg, m)
+			if !attrMethodSet[canonical] {
 				continue
 			}
 			// Accumulating methods are recorded (a later SetAttribute on the
 			// same key still duplicates them) but repeated calls are fine.
-			prev, set := first[m]
-			if set && !pkg.AccumulatingMethods[m] {
+			prev, set := first[canonical]
+			if set && !pkg.AccumulatingMethods[canonical] {
 				diags = append(diags, Diagnostic{
 					Check:    "duplicate-attr",
 					Pos:      fset.Position(sel.Sel.Pos()),
 					End:      fset.Position(c.End()),
 					Severity: Warning,
-					Message:  fmt.Sprintf(".%s() overwrites the value that .%s() set on line %d. Only the last value renders.", m, m, prev.Line),
-					Fix:      fmt.Sprintf("Keep a single .%s() call with the value you want rendered", m),
+					Message:  fmt.Sprintf(".%s() overwrites the value that .%s() set on line %d. Only the last value renders.", m, prev.name, fset.Position(prev.pos).Line),
+					Fix:      fmt.Sprintf("Keep a single .%s() call with the value you want rendered", canonical),
 				})
 				continue
 			}
 			if !set {
-				first[m] = fset.Position(sel.Sel.Pos())
+				first[canonical] = setterCall{name: m, pos: sel.Sel.Pos()}
 			}
 		}
 
@@ -203,6 +209,18 @@ func constructorDuplicate(fset *token.FileSet, sel *ast.SelectorExpr, c *ast.Cal
 	}
 }
 
+type setterCall struct {
+	name string
+	pos  token.Pos
+}
+
+func canonicalSetter(pkg Package, method string) string {
+	if canonical := pkg.SetterAliases[method]; canonical != "" {
+		return canonical
+	}
+	return method
+}
+
 // localChain records what the fluent chain that initialised a local set: the
 // registry package, the root constructor's non-content Sets, and the attribute
 // methods chained onto it. Everything recorded was set unconditionally at the
@@ -212,7 +230,7 @@ type localChain struct {
 	pkg       Package
 	ctorLabel string
 	ctorSet   map[string]bool
-	chained   map[string]token.Pos
+	chained   map[string]setterCall
 	assigned  token.Pos
 }
 
@@ -242,16 +260,22 @@ func (l *Linter) checkLocalDuplicateAttrs(fset *token.FileSet, file *ast.File, i
 		for _, m := range pkg.AttrMethods {
 			attrMethodSet[m] = true
 		}
-		state := localChain{pkg: pkg, chained: map[string]token.Pos{}, assigned: rhs.Pos()}
+		state := localChain{pkg: pkg, chained: map[string]setterCall{}, assigned: rhs.Pos()}
 		for cur := call; ; {
 			sel, ok := cur.Fun.(*ast.SelectorExpr)
 			if !ok {
 				break
 			}
+			if id, ok := unparen(sel.X).(*ast.Ident); ok {
+				if _, imported := imports[id.Name]; imported {
+					state.ctorLabel, state.ctorSet = constructorSets(cur, pkg, imports)
+					break
+				}
+			}
 			// Accumulating methods are recorded too: repeated calls
 			// concatenate, but a raw attribute alongside still duplicates.
-			if m := sel.Sel.Name; attrMethodSet[m] {
-				state.chained[m] = sel.Sel.Pos()
+			if m := canonicalSetter(pkg, sel.Sel.Name); attrMethodSet[m] {
+				state.chained[m] = setterCall{name: sel.Sel.Name, pos: sel.Sel.Pos()}
 			}
 			inner, ok := sel.X.(*ast.CallExpr)
 			if !ok {
@@ -317,13 +341,13 @@ func (l *Linter) checkLocalDuplicateAttrs(fset *token.FileSet, file *ast.File, i
 		if dedicated == "" {
 			return true
 		}
-		if pos, chained := state.chained[dedicated]; chained {
+		if previous, chained := state.chained[dedicated]; chained {
 			diags = append(diags, Diagnostic{
 				Check:    "duplicate-attr",
 				Pos:      fset.Position(sel.Sel.Pos()),
 				End:      fset.Position(call.End()),
 				Severity: Warning,
-				Message:  fmt.Sprintf("%s(%q, ...) sets %s again after .%s() on line %d. Both render, and the browser uses the first, so this value has no effect.", name, key, key, dedicated, fset.Position(pos).Line),
+				Message:  fmt.Sprintf("%s(%q, ...) sets %s again after .%s() on line %d. Both render, and the browser uses the first, so this value has no effect.", name, key, key, previous.name, fset.Position(previous.pos).Line),
 				Fix:      fmt.Sprintf("Move the value into the .%s() call. A browser keeps the first copy of a duplicated attribute.", dedicated),
 			})
 			return true

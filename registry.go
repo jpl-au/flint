@@ -85,6 +85,10 @@ type Package struct {
 	// use the dedicated typed method instead.
 	AttrMethods map[string]string
 
+	// SetterAliases maps fixed-value setters to the parameterised setter for
+	// the same attribute, e.g. button.Submit and button.Reset to Type.
+	SetterAliases map[string]string
+
 	// AccumulatingMethods lists the attribute methods whose repeated calls
 	// concatenate values rather than overwrite them (Class joins with a
 	// space, Style with a semicolon). The duplicate-attr check exempts
