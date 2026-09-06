@@ -11,10 +11,11 @@ const svgImport = "github.com/jpl-au/fluent/html5/svg"
 
 // Enum packages referenced by the typed svg attributes.
 const (
-	gradientUnitsImport = "github.com/jpl-au/fluent/html5/attr/gradientunits"
+	unitsImport         = "github.com/jpl-au/fluent/html5/attr/units"
 	textAnchorImport    = "github.com/jpl-au/fluent/html5/attr/textanchor"
 	fillRuleImport      = "github.com/jpl-au/fluent/html5/attr/fillrule"
 	vectorEffectImport  = "github.com/jpl-au/fluent/html5/attr/vectoreffect"
+	animationFillImport = "github.com/jpl-au/fluent/html5/attr/animationfill"
 )
 
 // TestSVGValidChains checks that constructors and chained methods of the
@@ -35,12 +36,18 @@ func TestSVGValidChains(t *testing.T) {
 		{name: "group transform", body: `_ = svg.G(svg.Rect()).Transform("translate(10,10)")`},
 		{name: "stop offset", body: `_ = svg.Stop().Offset("0").StopColor("#fff")`},
 		{name: "root viewbox", body: `_ = svg.New().ViewBox("0 0 10 10")`},
-		{name: "linear gradient", imports: []string{gradientUnitsImport}, body: `_ = svg.LinearGradient(svg.Stop()).GradientUnits(gradientunits.UserSpaceOnUse)`},
+		{name: "linear gradient", imports: []string{unitsImport}, body: `_ = svg.LinearGradient(svg.Stop()).GradientUnits(units.UserSpaceOnUse)`},
 		{name: "raw shape", body: `_ = svg.Raw("<path/>")`},
 		{name: "text anchor", imports: []string{textAnchorImport}, body: `_ = svg.Text("hi").TextAnchor(textanchor.Middle)`},
 		{name: "events mixin reused from html5", body: `_ = svg.Rect().OnPointerDown("go()").SetEvent("onkeydown", "go()")`},
 		{name: "core attributes", body: `_ = svg.New().Lang("en").AutoFocus().TransformOrigin("center")`},
 		{name: "presentation enums", imports: []string{fillRuleImport, vectorEffectImport}, body: `_ = svg.Path().FillRule(fillrule.EvenOdd).VectorEffect(vectoreffect.NonScalingStroke)`},
+		{name: "filter holds primitives", body: `_ = svg.Filter(svg.FeGaussianBlur().StdDeviation("2"), svg.FeOffset().Dx("1")).ID("blur")`},
+		{name: "lighting primitive holds a light source", body: `_ = svg.FeDiffuseLighting(svg.FeDistantLight().Azimuth("45")).SurfaceScale("2")`},
+		{name: "animation fill takes its own enum", imports: []string{animationFillImport}, body: `_ = svg.Animate().AttributeName("opacity").To("1").Fill(animationfill.Freeze)`},
+		{name: "shape fill stays a plain string", body: `_ = svg.Rect().Fill("red")`},
+		{name: "use and symbol", body: `_ = svg.Symbol(svg.Rect()).ID("icon")`},
+		{name: "accessible name", body: `_ = svg.New(svg.Title("Sales for the year"), svg.Desc("A bar chart"))`},
 	}
 
 	for _, tt := range tests {
@@ -126,6 +133,8 @@ func TestSVGEnumAttributes(t *testing.T) {
 		{name: "gradient-units string literal", body: `_ = svg.LinearGradient().GradientUnits("userSpaceOnUse")`},
 		{name: "fill-rule string literal", body: `_ = svg.Path().FillRule("evenodd")`},
 		{name: "dominant-baseline string literal", body: `_ = svg.Text("x").DominantBaseline("central")`},
+		{name: "animation fill string literal", body: `_ = svg.Animate().Fill("freeze")`},
+		{name: "blend mode string literal", body: `_ = svg.FeBlend().Mode("multiply")`},
 	}
 
 	for _, tt := range tests {

@@ -186,6 +186,19 @@ func (r *Registry) typeMethods(qualified string) map[string]int {
 	return r.Packages[qualified[:i]].TypeMethods[qualified[i+1:]]
 }
 
+// elementOfFunc returns the element of a multi-element package that fn
+// constructs, found by the constructor recorded on each element. ok is false
+// for a single-element package, whose own fields already describe it, and for
+// a function no element claims.
+func elementOfFunc(pkg Package, fn string) (Package, bool) {
+	for _, el := range pkg.Elements {
+		if _, ok := el.Functions[fn]; ok {
+			return el, true
+		}
+	}
+	return Package{}, false
+}
+
 // TagAliases returns a map from HTML tag to fluent package name for
 // element packages whose name differs from the tag they render. These
 // are tags that collide with Go keywords: select, main, var, and map

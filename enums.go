@@ -66,10 +66,14 @@ func (l *Linter) checkTypedParams(fset *token.FileSet, file *ast.File) []Diagnos
 			return true
 		}
 
-		// On a multi-element package, only flag a typed-param when the method
-		// actually exists on the element the chain roots at. Otherwise symbols.go
-		// already reports the method as nonexistent, and a typed-constant hint for
-		// a method this element does not have would be misleading.
+		// On a multi-element package, resolve against the element the chain
+		// roots at rather than the package-wide union. Only flag a typed-param
+		// when the method exists on that element, because symbols.go already
+		// reports a nonexistent method and a typed-constant hint for it would
+		// be misleading. The element's own entry also settles which enum a
+		// method takes when elements disagree: on an animation element Fill is
+		// the animation fill mode, while on a shape it is the paint, a string.
+		typedParams := pkg.TypedParams
 		if _, fn, ok := chainRootFunc(sel.X, imports); ok {
 			if ret, known := pkg.FuncReturns[fn]; known {
 				if methods := l.registry.typeMethods(ret); methods != nil {
@@ -78,10 +82,13 @@ func (l *Linter) checkTypedParams(fset *token.FileSet, file *ast.File) []Diagnos
 					}
 				}
 			}
+			if el, ok := elementOfFunc(pkg, fn); ok {
+				typedParams = el.TypedParams
+			}
 		}
 
 		// Check if this method expects a typed parameter.
-		enumPkg, hasTyped := pkg.TypedParams[methodName]
+		enumPkg, hasTyped := typedParams[methodName]
 		if !hasTyped {
 			return true
 		}
