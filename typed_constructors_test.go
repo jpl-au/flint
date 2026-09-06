@@ -21,6 +21,12 @@ func TestCheckTypedConstructors(t *testing.T) {
 			want:    "use ul.Items(...) instead of ul.New(...) for type-safe child nesting",
 		},
 		{
+			name:    "explicit type argument on node.Map still suggests ItemsOf",
+			imports: []string{"github.com/jpl-au/fluent/html5/ul", "github.com/jpl-au/fluent/html5/li", "github.com/jpl-au/fluent/node"},
+			body:    `_ = ul.New(node.Map[int]([]int{1}, func(int) node.Node { return li.New() }))`,
+			want:    "use ul.ItemsOf(...) instead of ul.New(node.Map(...)) for type-safe child nesting",
+		},
+		{
 			name:    "ol.New with li children suggests Items",
 			imports: []string{"github.com/jpl-au/fluent/html5/ol", "github.com/jpl-au/fluent/html5/li"},
 			body:    `_ = ol.New(li.Text("one"), li.Text("two"))`,

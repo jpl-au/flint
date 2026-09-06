@@ -1,6 +1,7 @@
 package flint
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -107,6 +108,59 @@ func TestCheckArity(t *testing.T) {
 				for _, d := range diags {
 					t.Logf("  %s: %s", d.Pos, d.Message)
 				}
+			}
+		})
+	}
+}
+
+// TestCheckArityGenericInstantiation covers a registered generic constructor
+// called with explicit type arguments, which the arity check must count the
+// same way as the inferred form.
+func TestCheckArityGenericInstantiation(t *testing.T) {
+	l := New(FluentRegistry())
+	imports := []string{"github.com/jpl-au/fluent/html5/ul", "github.com/jpl-au/fluent/html5/li"}
+
+	tests := []struct {
+		name string
+		body string
+		want string // empty means no arity diagnostic expected
+	}{
+		{
+			name: "explicit type argument, right count",
+			body: `_ = ul.ItemsOf[int]([]int{1}, func(int) *li.Element { return li.New() })`,
+		},
+		{
+			name: "explicit type argument, missing mapper",
+			body: `_ = ul.ItemsOf[int]([]int{1})`,
+			want: "ul.ItemsOf() expects 2 argument(s), got 1",
+		},
+		{
+			name: "inferred, missing mapper",
+			body: `_ = ul.ItemsOf([]int{1})`,
+			want: "ul.ItemsOf() expects 2 argument(s), got 1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			diags, err := l.Source("test.go", wrapWithImports(imports, tt.body))
+			if err != nil {
+				t.Fatalf("unexpected parse error: %v", err)
+			}
+			var got []string
+			for _, d := range diags {
+				if d.Check == "arity" {
+					got = append(got, d.Message)
+				}
+			}
+			if tt.want == "" {
+				if len(got) > 0 {
+					t.Errorf("unexpected arity diagnostics: %v", got)
+				}
+				return
+			}
+			if !slices.Contains(got, tt.want) {
+				t.Errorf("expected diagnostic %q, got %v", tt.want, got)
 			}
 		})
 	}

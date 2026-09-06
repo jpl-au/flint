@@ -34,6 +34,10 @@ func chainPackage(expr ast.Expr, imports map[string]string, reg *Registry) (Pack
 	switch e := expr.(type) {
 	case *ast.CallExpr:
 		return chainPackage(e.Fun, imports, reg)
+	case *ast.IndexExpr:
+		return chainPackage(e.X, imports, reg)
+	case *ast.IndexListExpr:
+		return chainPackage(e.X, imports, reg)
 
 	case *ast.ParenExpr:
 		return chainPackage(e.X, imports, reg)

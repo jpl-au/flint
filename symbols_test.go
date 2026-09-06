@@ -1,6 +1,7 @@
 package flint
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -252,6 +253,60 @@ func TestCheckSymbolsInvalidMethod(t *testing.T) {
 				for _, d := range diags {
 					t.Logf("  %s: %s", d.Pos, d.Message)
 				}
+			}
+		})
+	}
+}
+
+// TestCheckSymbolsGenericInstantiation covers a package constructor called with
+// explicit type arguments, which must resolve exactly as the inferred form does,
+// and a package constructor mistaken for a method, which the flat method set
+// must not accept.
+func TestCheckSymbolsGenericInstantiation(t *testing.T) {
+	l := New(FluentRegistry())
+	imports := []string{"github.com/jpl-au/fluent/html5/ul", "github.com/jpl-au/fluent/html5/li"}
+
+	tests := []struct {
+		name string
+		body string
+		want string // empty means no symbols diagnostic expected
+	}{
+		{
+			name: "explicit type argument, valid method",
+			body: `_ = ul.ItemsOf[int]([]int{1}, func(int) *li.Element { return li.New() }).Class("x")`,
+		},
+		{
+			name: "explicit type argument, bogus method",
+			body: `_ = ul.ItemsOf[int]([]int{1}, func(int) *li.Element { return li.New() }).Bogus()`,
+			want: "method Bogus does not exist on this element",
+		},
+		{
+			name: "package constructor used as a method",
+			body: `_ = ul.New().ItemsOf([]int{1}, func(int) *li.Element { return li.New() })`,
+			want: "method ItemsOf does not exist on this element",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			diags, err := l.Source("test.go", wrapWithImports(imports, tt.body))
+			if err != nil {
+				t.Fatalf("unexpected parse error: %v", err)
+			}
+			var got []string
+			for _, d := range diags {
+				if d.Check == "symbols" {
+					got = append(got, d.Message)
+				}
+			}
+			if tt.want == "" {
+				if len(got) > 0 {
+					t.Errorf("unexpected symbols diagnostics: %v", got)
+				}
+				return
+			}
+			if !slices.Contains(got, tt.want) {
+				t.Errorf("expected diagnostic %q, got %v", tt.want, got)
 			}
 		})
 	}

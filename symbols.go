@@ -114,9 +114,6 @@ func (l *Linter) checkSymbols(fset *token.FileSet, file *ast.File) []Diagnostic 
 			if _, exists := pkg.Methods[method]; exists {
 				return true
 			}
-			if _, ok := pkg.Functions[method]; ok {
-				return true
-			}
 
 			// This point is reached only when the root constructor's return
 			// type is not recorded (no FuncReturns entry) and the method is in
@@ -192,19 +189,34 @@ func rootPackageFunc(expr ast.Expr, imports map[string]string) (string, string, 
 func chainRootFunc(expr ast.Expr, imports map[string]string) (string, string, bool) {
 	switch e := expr.(type) {
 	case *ast.CallExpr:
-		if sel, ok := e.Fun.(*ast.SelectorExpr); ok {
-			if id, ok := sel.X.(*ast.Ident); ok {
-				if _, isPkg := imports[id.Name]; isPkg {
-					return id.Name, sel.Sel.Name, true
-				}
-			}
-			return chainRootFunc(sel.X, imports)
+		if alias, name, ok := packageFunc(e.Fun, imports); ok {
+			return alias, name, true
 		}
 		return chainRootFunc(e.Fun, imports)
 	case *ast.SelectorExpr:
 		return chainRootFunc(e.X, imports)
 	case *ast.ParenExpr:
 		return chainRootFunc(e.X, imports)
+	}
+	return "", "", false
+}
+
+// packageFunc reports the package alias and function name when fun is a
+// package-qualified function, with or without explicit type arguments:
+// ul.ItemsOf and ul.ItemsOf[int] resolve the same way. ok is false for a
+// method selector or a bare identifier.
+func packageFunc(fun ast.Expr, imports map[string]string) (alias, name string, ok bool) {
+	switch f := fun.(type) {
+	case *ast.IndexExpr:
+		return packageFunc(f.X, imports)
+	case *ast.IndexListExpr:
+		return packageFunc(f.X, imports)
+	case *ast.SelectorExpr:
+		if id, ok := f.X.(*ast.Ident); ok {
+			if _, isPkg := imports[id.Name]; isPkg {
+				return id.Name, f.Sel.Name, true
+			}
+		}
 	}
 	return "", "", false
 }

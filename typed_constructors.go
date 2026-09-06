@@ -270,16 +270,9 @@ func directNodeCall(arg ast.Expr, imports map[string]string) (alias, name string
 	if !ok {
 		return "", ""
 	}
-	sel, ok := call.Fun.(*ast.SelectorExpr)
-	if !ok {
+	alias, name, ok = packageFunc(call.Fun, imports)
+	if !ok || imports[alias] != nodeImportPath {
 		return "", ""
 	}
-	ident, ok := sel.X.(*ast.Ident)
-	if !ok {
-		return "", ""
-	}
-	if imports[ident.Name] != nodeImportPath {
-		return "", ""
-	}
-	return ident.Name, sel.Sel.Name
+	return alias, name
 }

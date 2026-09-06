@@ -13,6 +13,8 @@ const svgImport = "github.com/jpl-au/fluent/html5/svg"
 const (
 	gradientUnitsImport = "github.com/jpl-au/fluent/html5/attr/gradientunits"
 	textAnchorImport    = "github.com/jpl-au/fluent/html5/attr/textanchor"
+	fillRuleImport      = "github.com/jpl-au/fluent/html5/attr/fillrule"
+	vectorEffectImport  = "github.com/jpl-au/fluent/html5/attr/vectoreffect"
 )
 
 // TestSVGValidChains checks that constructors and chained methods of the
@@ -36,6 +38,9 @@ func TestSVGValidChains(t *testing.T) {
 		{name: "linear gradient", imports: []string{gradientUnitsImport}, body: `_ = svg.LinearGradient(svg.Stop()).GradientUnits(gradientunits.UserSpaceOnUse)`},
 		{name: "raw shape", body: `_ = svg.Raw("<path/>")`},
 		{name: "text anchor", imports: []string{textAnchorImport}, body: `_ = svg.Text("hi").TextAnchor(textanchor.Middle)`},
+		{name: "events mixin reused from html5", body: `_ = svg.Rect().OnPointerDown("go()").SetEvent("onkeydown", "go()")`},
+		{name: "core attributes", body: `_ = svg.New().Lang("en").AutoFocus().TransformOrigin("center")`},
+		{name: "presentation enums", imports: []string{fillRuleImport, vectorEffectImport}, body: `_ = svg.Path().FillRule(fillrule.EvenOdd).VectorEffect(vectoreffect.NonScalingStroke)`},
 	}
 
 	for _, tt := range tests {
@@ -119,6 +124,8 @@ func TestSVGEnumAttributes(t *testing.T) {
 		{name: "text-anchor string literal", body: `_ = svg.Text("x").TextAnchor("middle")`},
 		{name: "stroke-linecap string literal", body: `_ = svg.Rect().StrokeLineCap("round")`},
 		{name: "gradient-units string literal", body: `_ = svg.LinearGradient().GradientUnits("userSpaceOnUse")`},
+		{name: "fill-rule string literal", body: `_ = svg.Path().FillRule("evenodd")`},
+		{name: "dominant-baseline string literal", body: `_ = svg.Text("x").DominantBaseline("central")`},
 	}
 
 	for _, tt := range tests {
@@ -164,20 +171,21 @@ func TestSVGInfo(t *testing.T) {
 			want: []string{
 				"Element: rect",
 				"Import:  " + svgImport,
-				// Match the standalone method line: every svg element carries a
-				// StrokeWidth method, so a bare "Width" substring is not specific
-				// to the Width setter that distinguishes rect from stop.
+				// Match the standalone method line: every svg element carries
+				// StrokeWidth and StrokeDashOffset methods, so bare "Width" and
+				// "Offset" substrings are not specific to the Width and Offset
+				// setters that distinguish rect from stop.
 				"  Width(1)\n",
 				"Fill",
 			},
-			notWant: []string{"Offset"},
+			notWant: []string{"  Offset(1)\n"},
 		},
 		{
 			name:    "stop element resolves within svg",
 			element: "stop",
 			want: []string{
 				"Element: stop",
-				"Offset",
+				"  Offset(1)\n",
 			},
 			notWant: []string{"  Width(1)\n"},
 		},
@@ -206,7 +214,7 @@ func TestSVGInfo(t *testing.T) {
 			name:    "svg:rect prefix reaches the rect shape",
 			element: "svg:rect",
 			want:    []string{"Element: rect", "  Width(1)\n"},
-			notWant: []string{"Offset"},
+			notWant: []string{"  Offset(1)\n"},
 		},
 		{
 			name:    "bare text still resolves the text node package",

@@ -8,7 +8,9 @@ import (
 
 // checkArity reports calls to registered functions where the number of
 // arguments does not match the expected count. Variadic functions
-// (arity -1) accept any number of arguments and are not checked.
+// (arity -1) accept any number of arguments and are not checked. A call
+// with explicit type arguments (ul.ItemsOf[int](...)) is checked the same
+// way as the inferred form.
 func (l *Linter) checkArity(fset *token.FileSet, file *ast.File) []Diagnostic {
 	if l.registry == nil {
 		return nil
@@ -24,27 +26,17 @@ func (l *Linter) checkArity(fset *token.FileSet, file *ast.File) []Diagnostic {
 			return true
 		}
 
-		sel, ok := call.Fun.(*ast.SelectorExpr)
+		alias, funcName, ok := packageFunc(call.Fun, imports)
 		if !ok {
 			return true
 		}
-
-		ident, ok := sel.X.(*ast.Ident)
-		if !ok {
-			return true
-		}
-
-		importPath, known := imports[ident.Name]
-		if !known {
-			return true
-		}
+		importPath := imports[alias]
 
 		pkg, registered := l.registry.Packages[importPath]
 		if !registered {
 			return true
 		}
 
-		funcName := sel.Sel.Name
 		expected, isFunc := pkg.Functions[funcName]
 		if !isFunc {
 			return true
